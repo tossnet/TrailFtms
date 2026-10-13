@@ -92,7 +92,7 @@
                 <WinOldButton OnClick="ExportAsync">@L["Export"]</WinOldButton>
                 @if (_savedId is not null && !_dirty)
                 {
-                    <WinOldButton OnClick="@(() => Navigation.NavigateTo($"ride?program={_savedId}"))">@L["Ride"]</WinOldButton>
+                    <WinOldButton Class="primary" OnClick="@(() => Navigation.NavigateTo($"ride?program={_savedId}"))"><BiIcon Name="BiIconName.PlayFill" /> @L["Start"]</WinOldButton>
                 }
                 <WinOldButton OnClick="BackAsync">@L["Back"]</WinOldButton>
             </div>

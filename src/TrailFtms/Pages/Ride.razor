@@ -116,7 +116,7 @@
         }
 
         <div class="tools">
-            <WinOldButton OnClick="ToggleFullscreenAsync">@L["Fullscreen"]</WinOldButton>
+            <WinOldButton OnClick="ToggleFullscreenAsync"><BiIcon Name="BiIconName.ArrowsFullscreen" /> @L["Fullscreen"]</WinOldButton>
             @if (Treadmill.State == TreadmillState.Connected)
             {
                 <WinOldButton OnClick="Treadmill.DisconnectAsync">@L["Disconnect"]</WinOldButton>

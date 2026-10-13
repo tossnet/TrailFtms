@@ -93,7 +93,7 @@ public sealed class EditorTests
         Assert.AreEqual(new ProgramSegment(0, 3, 1), saved.Segments.Single());
         StringAssert.EndsWith(rig.Navigation.Uri, "editor?program=ma-sortie");
 
-        rig.Click("Rouler");
+        rig.Click("Démarrer");
         StringAssert.EndsWith(rig.Navigation.Uri, "ride?program=ma-sortie");
     }
 

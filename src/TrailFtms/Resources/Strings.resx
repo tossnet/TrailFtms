@@ -177,9 +177,6 @@
   <data name="Remove" xml:space="preserve">
     <value>Supprimer</value>
   </data>
-  <data name="Ride" xml:space="preserve">
-    <value>Rouler</value>
-  </data>
   <data name="Imported" xml:space="preserve">
     <value>importé</value>
   </data>
@@ -440,5 +437,8 @@
   </data>
   <data name="Cancel" xml:space="preserve">
     <value>Annuler</value>
+  </data>
+  <data name="Home" xml:space="preserve">
+    <value>Accueil</value>
   </data>
 </root>

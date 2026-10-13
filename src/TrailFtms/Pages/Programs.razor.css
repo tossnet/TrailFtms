@@ -6,8 +6,19 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
+    gap: 0.5rem 1rem;
+}
+
+    .program ::deep .summary {
+        flex: 1 1 12rem;
+    }
+
+.thumb {
+    width: 128px;
+    height: 72px;
+    object-fit: cover;
+    background: #000;
+    cursor: pointer;
 }
 
 .actions {
