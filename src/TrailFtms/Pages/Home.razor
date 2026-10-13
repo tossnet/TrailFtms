@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject IFtmsTreadmill Treadmill
 @inject IStringLocalizer<Strings> L
+@inject NavigationManager Navigation
 
 <PageTitle>TrailFtms</PageTitle>
 
@@ -68,6 +69,10 @@
     {
         <TreadmillPanel />
     }
+
+    <div>
+        <WinOldButton OnClick="@(() => Navigation.NavigateTo("ride"))">@L["TryVideo"]</WinOldButton>
+    </div>
 </div>
 
 @code {

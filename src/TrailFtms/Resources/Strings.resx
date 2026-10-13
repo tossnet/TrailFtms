@@ -114,4 +114,55 @@
   <data name="BackHome" xml:space="preserve">
     <value>Retour à l'accueil</value>
   </data>
+  <data name="TryVideo" xml:space="preserve">
+    <value>Essayer une vidéo</value>
+  </data>
+  <data name="Video" xml:space="preserve">
+    <value>Vidéo</value>
+  </data>
+  <data name="VideoLink" xml:space="preserve">
+    <value>Lien ou identifiant YouTube</value>
+  </data>
+  <data name="Load" xml:space="preserve">
+    <value>Charger</value>
+  </data>
+  <data name="InvalidVideoLink" xml:space="preserve">
+    <value>Lien YouTube non reconnu.</value>
+  </data>
+  <data name="Position" xml:space="preserve">
+    <value>Position</value>
+  </data>
+  <data name="VideoState_NotLoaded" xml:space="preserve">
+    <value>Aucune vidéo</value>
+  </data>
+  <data name="VideoState_Unstarted" xml:space="preserve">
+    <value>Non démarrée</value>
+  </data>
+  <data name="VideoState_Ended" xml:space="preserve">
+    <value>Terminée</value>
+  </data>
+  <data name="VideoState_Playing" xml:space="preserve">
+    <value>Lecture</value>
+  </data>
+  <data name="VideoState_Paused" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="VideoState_Buffering" xml:space="preserve">
+    <value>Chargement</value>
+  </data>
+  <data name="VideoState_Cued" xml:space="preserve">
+    <value>Prête</value>
+  </data>
+  <data name="VideoError_InvalidId" xml:space="preserve">
+    <value>Identifiant de vidéo invalide.</value>
+  </data>
+  <data name="VideoError_PlaybackFailed" xml:space="preserve">
+    <value>Le lecteur n'a pas pu lire cette vidéo.</value>
+  </data>
+  <data name="VideoError_NotFound" xml:space="preserve">
+    <value>Vidéo introuvable ou privée.</value>
+  </data>
+  <data name="VideoError_NotEmbeddable" xml:space="preserve">
+    <value>Le propriétaire de cette vidéo interdit sa lecture en dehors de YouTube.</value>
+  </data>
 </root>

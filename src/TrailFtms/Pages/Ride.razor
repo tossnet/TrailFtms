@@ -1,0 +1,106 @@
+@page "/ride"
+@implements IDisposable
+@inject IVideoPlayer Player
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Strings> L
+
+<PageTitle>@L["Video"] - TrailFtms</PageTitle>
+
+<div class="home wo-col wo-gap-16">
+    <WinOldHeading Level="1">@L["Video"]</WinOldHeading>
+
+    <div class="wo-row wo-gap-8 link">
+        <WinOldTextBox Label="@L["VideoLink"]" @bind-Value="_link" Class="link-input" />
+        <WinOldButton Default="true" OnClick="Load">@L["Load"]</WinOldButton>
+    </div>
+
+    @if (_error is not null)
+    {
+        <WinOldInfoBar Icon="Icon.Alert" Message="@_error" Closable="true" OnClose="() => _error = null" />
+    }
+
+    @if (_videoId is not null)
+    {
+        <VideoPlayer VideoId="@_videoId" />
+        <WinOldLabel>
+            @L[$"VideoState_{Player.State}"] - @L["Position"] : @FormatTime(_position) / @FormatTime(_duration)
+        </WinOldLabel>
+    }
+</div>
+
+@code {
+    private static readonly TimeSpan RefreshInterval = TimeSpan.FromMilliseconds(250);
+
+    private string? _link;
+    private string? _videoId;
+    private string? _error;
+    private double _position;
+    private double _duration;
+    private readonly CancellationTokenSource _cts = new();
+
+    /// <summary>Video id or link, e.g. /ride?v=KiEN4HxM4ic.</summary>
+    [SupplyParameterFromQuery(Name = "v")]
+    public string? V { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Player.StateChanged += OnPlayerChanged;
+        Player.ErrorOccurred += OnPlayerError;
+        _link = V;
+        _videoId = YouTubeUrl.ParseVideoId(V);
+        _ = RefreshPositionAsync(_cts.Token);
+    }
+
+    private void Load()
+    {
+        _error = null;
+        var id = YouTubeUrl.ParseVideoId(_link);
+        if (id is null)
+        {
+            _error = L["InvalidVideoLink"];
+            return;
+        }
+
+        _videoId = id;
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("v", id), replace: true);
+    }
+
+    private async Task RefreshPositionAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(RefreshInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                if (Player.State is VideoState.NotLoaded)
+                    continue;
+
+                _position = await Player.GetCurrentTimeAsync();
+                _duration = await Player.GetDurationAsync();
+                StateHasChanged();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Page left.
+        }
+    }
+
+    private void OnPlayerChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnPlayerError(VideoError error)
+    {
+        _error = L[$"VideoError_{error}"];
+        InvokeAsync(StateHasChanged);
+    }
+
+    private static string FormatTime(double seconds) => TimeSpan.FromSeconds(Math.Floor(seconds)).ToString(@"h\:mm\:ss");
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+        Player.StateChanged -= OnPlayerChanged;
+        Player.ErrorOccurred -= OnPlayerError;
+    }
+}
