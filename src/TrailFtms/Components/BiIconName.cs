@@ -10,4 +10,5 @@ public enum BiIconName
     Download,
     Trash,
     Import,
+    Gear,
 }

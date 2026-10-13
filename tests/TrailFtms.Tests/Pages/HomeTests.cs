@@ -73,4 +73,17 @@ public sealed class HomeTests
         cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Échec de la connexion : Connection attempt failed. Vérifie que le tapis"));
         Assert.DoesNotContain("undefined", cut.Markup);
     }
+
+    [TestMethod]
+    public void Programs_is_the_main_button_and_settings_has_a_gear()
+    {
+        using var ctx = new AppTestContext();
+
+        var cut = ctx.Render<Home>();
+
+        var programs = cut.FindAll("button").Single(b => b.TextContent.Trim() == "Programmes");
+        StringAssert.Contains(programs.ClassName, "primary");
+        Assert.IsNotNull(programs.QuerySelector("svg.icon"));
+        Assert.IsNotNull(cut.FindAll("button").Single(b => b.TextContent.Trim() == "Réglages").QuerySelector("svg.icon"));
+    }
 }
