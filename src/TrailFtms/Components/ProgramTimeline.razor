@@ -1,14 +1,20 @@
-@* Incline profile of the route with the current position. With a Window, only that many seconds are shown
-   and the view scrolls with the video (cursor near the left, so the coming terrain is visible).
+@* Incline profile of the route with the current position. The height is the incline, the fill color the
+   speed band (walk, brisk walk, jog, run). With a Window, only that many seconds are shown and the view
+   scrolls with the video (cursor near the left, so the coming terrain is visible).
    A tap on a segment seeks to its start. *@
 
 <div class="timeline-box">
     <svg class="timeline" viewBox="0 0 @Width @Height" preserveAspectRatio="none" role="img" aria-label="@AriaLabel">
-        <path class="area" d="@_area" />
-        <path class="line" d="@_line" />
-        @foreach (var hit in _hits)
+        @foreach (var part in _parts)
         {
-            <rect class="hit" x="@F(hit.X)" y="0" width="@F(hit.W)" height="@Height" @onclick="() => OnSeek.InvokeAsync(hit.T)" />
+            <rect class="fill speed-@part.Band" x="@F(part.X)" y="@F(part.Y)" width="@F(part.W)" height="@F(Height - part.Y)" />
+        }
+        <path class="line" d="@_line" />
+        @foreach (var part in _parts)
+        {
+            <rect class="hit" x="@F(part.X)" y="0" width="@F(part.W)" height="@Height" @onclick="() => OnSeek.InvokeAsync(part.Segment.T)">
+                <title>@Formatting.Time(part.Segment.T) · @part.Segment.Incline.ToString("0.#") % · @part.Segment.Speed.ToString("0.0") km/h</title>
+            </rect>
         }
         <line class="cursor" x1="@F(CursorX)" y1="0" x2="@F(CursorX)" y2="@Height" />
     </svg>
@@ -17,17 +23,32 @@
         <span class="edge start">@Formatting.Time(_start)</span>
         <span class="edge end">@Formatting.Time(_start + _span)</span>
     }
+    @if (_parts.Count > 0)
+    {
+        <div class="legend" aria-hidden="true">
+            @for (var band = 0; band < SpeedBandLabels.Length; band++)
+            {
+                <span class="legend-item"><span class="swatch speed-@band"></span>@SpeedBandLabels[band]</span>
+            }
+        </div>
+    }
 </div>
 
 @code {
     private const double Width = 1000;
     private const double Height = 100;
-    private const double Padding = 6;
+    private const double BottomPadding = 6;
+    private const double TopPadding = 20; // room for the legend and the times above the highest climb
     private const double CursorRatio = 0.2; // position of the cursor in a scrolling window
 
-    private string _area = "";
+    // Speed bands in km/h: walk, brisk walk, jog, run.
+    private static readonly double[] SpeedBandLimits = [4, 6, 8];
+    private static readonly string[] SpeedBandLabels = ["< 4", "4-6", "6-8", "8+ km/h"];
+
+    private readonly record struct Part(double X, double W, double Y, int Band, ProgramSegment Segment);
+
     private string _line = "";
-    private List<(double X, double W, double T)> _hits = [];
+    private List<Part> _parts = [];
     private RideProgram? _drawnProgram;
     private double _drawnTotal;
     private double _start;
@@ -83,8 +104,8 @@
         var segments = Program.Segments;
         if (segments.Count == 0)
         {
-            _area = _line = "";
-            _hits = [];
+            _line = "";
+            _parts = [];
             return;
         }
 
@@ -92,21 +113,29 @@
         var low = Math.Min(0, segments.Min(s => s.Incline));
         var high = Math.Max(1, segments.Max(s => s.Incline));
         double X(double t) => Math.Clamp((t - _start) / _span, 0, 1) * Width;
-        double Y(double incline) => Height - Padding - (incline - low) / (high - low) * (Height - 2 * Padding);
+        double Y(double incline) => Height - BottomPadding - (incline - low) / (high - low) * (Height - BottomPadding - TopPadding);
 
         // Step chart: each segment is flat until the next one. Start with the one in force at the window start.
         var first = Math.Max(0, Program.SegmentIndexAt(_start));
         var line = new System.Text.StringBuilder($"M0,{F(Y(segments[first].Incline))}");
-        _hits = [];
+        _parts = [];
         for (var i = first; i < segments.Count && segments[i].T < _start + _span; i++)
         {
             var from = X(segments[i].T);
             var to = i + 1 < segments.Count ? X(segments[i + 1].T) : Width;
-            line.Append($" V{F(Y(segments[i].Incline))} H{F(to)}");
-            _hits.Add((from, Math.Max(to - from, 0), segments[i].T));
+            var y = Y(segments[i].Incline);
+            line.Append($" V{F(y)} H{F(to)}");
+            _parts.Add(new Part(from, Math.Max(to - from, 0), y, SpeedBand(segments[i].Speed), segments[i]));
         }
         _line = line.ToString();
-        _area = $"{_line} V{F(Height)} H0 Z";
+    }
+
+    private static int SpeedBand(double speed)
+    {
+        var band = 0;
+        while (band < SpeedBandLimits.Length && speed >= SpeedBandLimits[band])
+            band++;
+        return band;
     }
 
     private static string F(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);

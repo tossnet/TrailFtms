@@ -9,9 +9,15 @@
     --tf-ride-border: #d1d1d1;
     --tf-muted: #5c5c5c;
     --tf-profile-bg: #ffffff;
-    --tf-profile-fill: rgba(16, 124, 16, 0.22);
-    --tf-profile-line: #107c10;
-    --tf-profile-hover: rgba(0, 0, 0, 0.06);
+    --tf-profile-line: #5c5c5c;
+    --tf-profile-cursor: #1b1b1b;
+    --tf-profile-hover: rgba(0, 0, 0, 0.08);
+    /* Speed bands (walk, brisk walk, jog, run): one blue ramp, faster = more contrast.
+       Ordinal ramp validated against the profile background in each theme. */
+    --tf-speed-0: #86b6ef;
+    --tf-speed-1: #3987e5;
+    --tf-speed-2: #1c5cab;
+    --tf-speed-3: #0d366b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,9 +28,13 @@
         --tf-ride-border: #3a3a3a;
         --tf-muted: #b5b5b5;
         --tf-profile-bg: #272727;
-        --tf-profile-fill: rgba(108, 203, 95, 0.28);
-        --tf-profile-line: #6ccb5f;
-        --tf-profile-hover: rgba(255, 255, 255, 0.08);
+        --tf-profile-line: #b5b5b5;
+        --tf-profile-cursor: #ffffff;
+        --tf-profile-hover: rgba(255, 255, 255, 0.1);
+        --tf-speed-0: #256abf;
+        --tf-speed-1: #3987e5;
+        --tf-speed-2: #6da7ec;
+        --tf-speed-3: #b7d3f6;
     }
 }
 
