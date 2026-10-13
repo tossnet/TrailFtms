@@ -165,4 +165,85 @@
   <data name="VideoError_NotEmbeddable" xml:space="preserve">
     <value>Le propriétaire de cette vidéo interdit sa lecture en dehors de YouTube.</value>
   </data>
+  <data name="Programs" xml:space="preserve">
+    <value>Programmes</value>
+  </data>
+  <data name="Import" xml:space="preserve">
+    <value>Importer un programme</value>
+  </data>
+  <data name="Export" xml:space="preserve">
+    <value>Exporter</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Ride" xml:space="preserve">
+    <value>Rouler</value>
+  </data>
+  <data name="Imported" xml:space="preserve">
+    <value>importé</value>
+  </data>
+  <data name="Embedded" xml:space="preserve">
+    <value>fourni</value>
+  </data>
+  <data name="ProgramSummary" xml:space="preserve">
+    <value>{0} points, durée {1}</value>
+  </data>
+  <data name="ByAuthor" xml:space="preserve">
+    <value>par {0}</value>
+  </data>
+  <data name="NoPrograms" xml:space="preserve">
+    <value>Aucun programme.</value>
+  </data>
+  <data name="ProgramsLoadError" xml:space="preserve">
+    <value>Impossible de charger les programmes : {0}</value>
+  </data>
+  <data name="ImportSuccess" xml:space="preserve">
+    <value>Programme « {0} » importé.</value>
+  </data>
+  <data name="ImportFailed" xml:space="preserve">
+    <value>Le fichier « {0} » n'est pas un programme valide :</value>
+  </data>
+  <data name="ImportTooLarge" xml:space="preserve">
+    <value>Le fichier « {0} » est trop volumineux.</value>
+  </data>
+  <data name="ProgramNotFound" xml:space="preserve">
+    <value>Programme introuvable.</value>
+  </data>
+  <data name="ProgramError_InvalidJson" xml:space="preserve">
+    <value>le fichier n'est pas un JSON valide</value>
+  </data>
+  <data name="ProgramError_MissingId" xml:space="preserve">
+    <value>l'identifiant (id) est manquant</value>
+  </data>
+  <data name="ProgramError_InvalidId" xml:space="preserve">
+    <value>l'identifiant (id) ne doit contenir que des minuscules, chiffres et tirets</value>
+  </data>
+  <data name="ProgramError_MissingTitle" xml:space="preserve">
+    <value>le titre est manquant</value>
+  </data>
+  <data name="ProgramError_InvalidYoutubeId" xml:space="preserve">
+    <value>l'identifiant ou le lien YouTube est invalide</value>
+  </data>
+  <data name="ProgramError_InvalidDuration" xml:space="preserve">
+    <value>la durée est négative</value>
+  </data>
+  <data name="ProgramError_NoSegments" xml:space="preserve">
+    <value>aucun segment</value>
+  </data>
+  <data name="ProgramError_FirstSegmentNotAtStart" xml:space="preserve">
+    <value>le premier segment doit commencer à 0:00 (il commence à {0})</value>
+  </data>
+  <data name="ProgramError_DuplicateTime" xml:space="preserve">
+    <value>plusieurs segments à {0}</value>
+  </data>
+  <data name="ProgramError_SegmentAfterEnd" xml:space="preserve">
+    <value>segment à {0} après la fin de la vidéo</value>
+  </data>
+  <data name="ProgramError_SpeedOutOfRange" xml:space="preserve">
+    <value>vitesse hors limites à {0} (0 à 30 km/h)</value>
+  </data>
+  <data name="ProgramError_InclineOutOfRange" xml:space="preserve">
+    <value>inclinaison hors limites à {0} (-10 à 30 %)</value>
+  </data>
 </root>

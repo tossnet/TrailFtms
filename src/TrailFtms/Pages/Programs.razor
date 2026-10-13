@@ -1,0 +1,148 @@
+@page "/programs"
+@using Microsoft.AspNetCore.Components.Forms
+@implements IAsyncDisposable
+@inject ProgramStore Store
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject IStringLocalizer<Strings> L
+
+<PageTitle>@L["Programs"] - TrailFtms</PageTitle>
+
+<div class="home wo-col wo-gap-16">
+    <WinOldHeading Level="1">@L["Programs"]</WinOldHeading>
+
+    <div class="import">
+        <WinOldButton OnClick="OpenPickerAsync">@L["Import"]</WinOldButton>
+        <InputFile @ref="_input" OnChange="ImportAsync" accept=".json,application/json" />
+    </div>
+
+    @if (_message is not null)
+    {
+        <WinOldInfoBar Icon="@(_errors.Count == 0 ? Icon.Information : Icon.Alert)" Message="@_message"
+                       Closable="true" OnClose="ClearMessage">
+            @if (_errors.Count > 0)
+            {
+                <ul class="errors">
+                    @foreach (var error in _errors)
+                    {
+                        <li>@error</li>
+                    }
+                </ul>
+            }
+        </WinOldInfoBar>
+    }
+
+    @if (_loadError is not null)
+    {
+        <WinOldInfoBar Icon="Icon.Critical" Message="@_loadError" />
+    }
+    else if (_loaded && Store.Programs.Count == 0)
+    {
+        <WinOldLabel>@L["NoPrograms"]</WinOldLabel>
+    }
+
+    @foreach (var program in Store.Programs)
+    {
+        <WinOldFrame Label="@program.Title">
+            <div class="program">
+                <WinOldLabel>
+                    @L["ProgramSummary", program.Segments.Count, Formatting.Time(program.DurationSeconds)]
+                    @if (program.Author is not null)
+                    {
+                        <text>, @L["ByAuthor", program.Author]</text>
+                    }
+                    (@(Store.IsImported(program.Id) ? L["Imported"] : L["Embedded"]))
+                </WinOldLabel>
+                <div class="actions">
+                    <WinOldButton Default="true" OnClick="@(() => Navigation.NavigateTo($"ride?program={program.Id}"))">@L["Ride"]</WinOldButton>
+                    <WinOldButton OnClick="@(() => ExportAsync(program))">@L["Export"]</WinOldButton>
+                    @if (Store.IsImported(program.Id))
+                    {
+                        <WinOldButton OnClick="@(() => Store.RemoveAsync(program.Id))">@L["Remove"]</WinOldButton>
+                    }
+                </div>
+            </div>
+        </WinOldFrame>
+    }
+</div>
+
+@code {
+    private const long MaxFileSize = 1024 * 1024;
+
+    private bool _loaded;
+    private string? _loadError;
+    private string? _message;
+    private List<string> _errors = [];
+    private InputFile? _input;
+    private IJSObjectReference? _files;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Store.LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _loadError = L["ProgramsLoadError", ex.Message];
+        }
+        _loaded = true;
+    }
+
+    private async Task ImportAsync(InputFileChangeEventArgs e)
+    {
+        ClearMessage();
+        var file = e.File;
+        if (file.Size > MaxFileSize)
+        {
+            _message = L["ImportTooLarge", file.Name];
+            _errors = [];
+            return;
+        }
+
+        using var reader = new StreamReader(file.OpenReadStream(MaxFileSize));
+        var result = await Store.ImportAsync(await reader.ReadToEndAsync());
+        if (result.Program is { } program)
+        {
+            _message = L["ImportSuccess", program.Title];
+            return;
+        }
+
+        _message = L["ImportFailed", file.Name];
+        _errors = result.Errors
+            .Select(error => (string)L[$"ProgramError_{error.Kind}", Formatting.Time(error.Time ?? 0)])
+            .ToList();
+    }
+
+    private async Task OpenPickerAsync()
+    {
+        if (_input?.Element is { } element)
+            await (await FilesAsync()).InvokeVoidAsync("openPicker", element);
+    }
+
+    private async Task ExportAsync(RideProgram program) =>
+        await (await FilesAsync()).InvokeVoidAsync("downloadText", $"{program.Id}.json", ProgramParser.Serialize(program));
+
+    private async ValueTask<IJSObjectReference> FilesAsync() =>
+        _files ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/files.js");
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_files is not null)
+        {
+            try
+            {
+                await _files.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+    }
+
+    private void ClearMessage()
+    {
+        _message = null;
+        _errors = [];
+    }
+}
