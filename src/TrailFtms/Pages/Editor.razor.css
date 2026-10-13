@@ -1,0 +1,73 @@
+.editor-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(20rem, 2fr);
+    gap: var(--tf-gap);
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .editor-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.link {
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.profile {
+    height: 5rem;
+}
+
+.add-point {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.5rem 1rem;
+}
+
+.position {
+    min-width: 8rem;
+    font-size: 1.2rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.points {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.point {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.15rem 0.25rem;
+}
+
+    .point.active {
+        background: var(--tf-profile-hover);
+        outline: 1px solid var(--tf-accent);
+    }
+
+    .point ::deep .time {
+        min-width: 4.5rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .point ::deep input {
+        width: 4.5rem;
+    }
+
+.unit {
+    color: var(--tf-muted);
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}

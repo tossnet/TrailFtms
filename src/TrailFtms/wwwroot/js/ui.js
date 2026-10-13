@@ -53,3 +53,13 @@ export async function toggleFullscreen() {
     if (document.fullscreenElement) await document.exitFullscreen();
     else await document.documentElement.requestFullscreen();
 }
+
+// Browser prompt when leaving the page (close, reload) with unsaved changes.
+function onBeforeUnload(e) {
+    e.preventDefault();
+}
+
+export function setLeaveWarning(enabled) {
+    if (enabled) window.addEventListener("beforeunload", onBeforeUnload);
+    else window.removeEventListener("beforeunload", onBeforeUnload);
+}

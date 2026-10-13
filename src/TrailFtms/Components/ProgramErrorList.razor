@@ -1,0 +1,14 @@
+@inject IStringLocalizer<Strings> L
+
+@* Program validation errors, located by video time when relevant. *@
+<ul class="errors">
+    @foreach (var error in Errors)
+    {
+        <li>@L[$"ProgramError_{error.Kind}", Formatting.Time(error.Time ?? 0)]</li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<ProgramError> Errors { get; set; } = [];
+}
