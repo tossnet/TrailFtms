@@ -117,6 +117,10 @@
 
         <div class="tools">
             <WinOldButton OnClick="ToggleFullscreenAsync">@L["Fullscreen"]</WinOldButton>
+            @if (Treadmill.State == TreadmillState.Connected)
+            {
+                <WinOldButton OnClick="Treadmill.DisconnectAsync">@L["Disconnect"]</WinOldButton>
+            }
             <span class="status">@L[$"VideoState_{Player.State}"]@(_engine.Status != RideStatus.Idle ? $" - {L[$"RideStatus_{_engine.Status}"]}" : "")</span>
         </div>
 

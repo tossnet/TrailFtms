@@ -39,6 +39,7 @@ public interface IFtmsTreadmill : IAsyncDisposable
 
     /// <summary>Opens the browser device picker and connects. Returns false if the user cancelled.</summary>
     Task<bool> ConnectAsync();
+    /// <summary>Stops the belt (best effort), then disconnects.</summary>
     Task DisconnectAsync();
 
     // Commands are queued (one in flight) and return the machine's answer.

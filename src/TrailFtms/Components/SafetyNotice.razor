@@ -1,40 +1,32 @@
-@implements IDisposable
 @inject SettingsStore Settings
+@inject IDialogService Dialogs
 @inject IStringLocalizer<Strings> L
 
-@if (_loaded && !Settings.SafetyAccepted)
-{
-    <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="safety-title">
-        <div class="notice">
-            <WinOldFrame Label="@L["SafetyTitle"]">
-                <div class="wo-col wo-gap-8" id="safety-title">
-                    <WinOldInfoBar Icon="Icon.Alert" Closable="false" Message="@L["SafetyIntro"]" />
-                    <ul>
-                        <li><strong>@L["SafetyKey"]</strong></li>
-                        <li>@L["SafetyStop"]</li>
-                        <li>@L["SafetyLimits"]</li>
-                        <li>@L["SafetyResponsibility"]</li>
-                    </ul>
-                    <div>
-                        <WinOldButton Default="true" OnClick="Settings.AcceptSafetyAsync">@L["SafetyAccept"]</WinOldButton>
-                    </div>
-                </div>
-            </WinOldFrame>
-        </div>
-    </div>
-}
+@* First launch: safety warning in a WinOld message box (rendered by the host of WinOldAppShell). *@
 
 @code {
-    private bool _loaded;
-
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        Settings.Changed += OnChanged;
+        if (!firstRender)
+            return;
+
         await Settings.LoadAsync();
-        _loaded = true;
+        if (Settings.SafetyAccepted)
+            return;
+
+        var accepted = await Dialogs.ShowMessageBox(new MessageBoxOptions
+        {
+            Appearance = Appearance.Win10,
+            TouchMode = true,
+            Icon = Icon.Alert,
+            Title = L["SafetyTitle"],
+            Message = string.Join("\n\n",
+                L["SafetyIntro"], L["SafetyKey"], L["SafetyStop"], L["SafetyLimits"], L["SafetyResponsibility"]),
+            OkButtonText = L["SafetyAccept"],
+        });
+
+        // Closed without "I understand": ask again next time.
+        if (accepted == true)
+            await Settings.AcceptSafetyAsync();
     }
-
-    private void OnChanged() => InvokeAsync(StateHasChanged);
-
-    public void Dispose() => Settings.Changed -= OnChanged;
 }

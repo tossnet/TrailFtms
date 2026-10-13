@@ -1,5 +1,9 @@
+using Blazor.WinOld;
+using Blazor.WinOld.Components;
 using Bunit;
+using Microsoft.Extensions.DependencyInjection;
 using TrailFtms.Components;
+using TrailFtms.Services.Settings;
 using TrailFtms.Tests.Fakes;
 
 namespace TrailFtms.Tests.Components;
@@ -7,28 +11,53 @@ namespace TrailFtms.Tests.Components;
 [TestClass]
 public sealed class SafetyNoticeTests
 {
-    [TestMethod]
-    public void Shown_on_first_launch_and_closed_once_accepted()
+    private static (AppTestContext Ctx, FakeDialogService Dialogs) Create()
     {
-        using var ctx = new AppTestContext();
-
-        var cut = ctx.Render<SafetyNotice>();
-
-        cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "clé de sécurité"));
-        cut.FindAll("button").Single(b => b.TextContent.Contains("J'ai compris")).Click();
-
-        cut.WaitForAssertion(() => Assert.IsEmpty(cut.FindAll(".overlay")));
-        ctx.JSInterop.VerifyInvoke("localStorage.setItem");
+        var ctx = new AppTestContext();
+        var dialogs = new FakeDialogService();
+        ctx.Services.AddSingleton<IDialogService>(dialogs);
+        return (ctx, dialogs);
     }
 
     [TestMethod]
-    public void Hidden_when_already_accepted()
+    public void First_launch_shows_a_message_box_and_remembers_the_answer()
     {
-        using var ctx = new AppTestContext();
+        var (ctx, dialogs) = Create();
+        using var _ = ctx;
+
+        ctx.Render<SafetyNotice>();
+
+        var box = dialogs.MessageBoxes.Single();
+        Assert.AreEqual("Avant de commencer", box.Title);
+        Assert.AreEqual("J'ai compris", box.OkButtonText);
+        StringAssert.Contains(box.Message, "clé de sécurité");
+        Assert.AreEqual(Icon.Alert, box.Icon);
+        Assert.IsTrue(box.TouchMode);
+        Assert.IsTrue(ctx.Services.GetRequiredService<SettingsStore>().SafetyAccepted);
+    }
+
+    [TestMethod]
+    public void Closed_without_accepting_asks_again_next_time()
+    {
+        var (ctx, dialogs) = Create();
+        using var _ = ctx;
+        dialogs.Answer = null;
+
+        ctx.Render<SafetyNotice>();
+
+        Assert.HasCount(1, dialogs.MessageBoxes);
+        Assert.IsFalse(ctx.Services.GetRequiredService<SettingsStore>().SafetyAccepted);
+    }
+
+    [TestMethod]
+    public void Nothing_shown_when_already_accepted()
+    {
+        var (ctx, dialogs) = Create();
+        using var _ = ctx;
         ctx.JSInterop.Setup<string?>("localStorage.getItem", "trailftms.safety-accepted").SetResult("true");
 
-        var cut = ctx.Render<SafetyNotice>();
+        ctx.Render<SafetyNotice>();
 
-        Assert.IsEmpty(cut.FindAll(".overlay"));
+        Assert.IsEmpty(dialogs.MessageBoxes);
     }
 }

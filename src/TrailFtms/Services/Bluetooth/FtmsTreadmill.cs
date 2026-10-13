@@ -90,6 +90,18 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
         if (_module is null || State is TreadmillState.Disconnected)
             return;
 
+        // Never leave the belt running without the app: stop it first (best effort).
+        if (State == TreadmillState.Connected)
+        {
+            try
+            {
+                await StopAsync(StopKind.Stop);
+            }
+            catch (Exception ex) when (ex is TimeoutException or InvalidOperationException)
+            {
+            }
+        }
+
         _disconnectRequested = true;
         await _module.InvokeVoidAsync("disconnect");
         // The browser also raises gattserverdisconnected, OnDisconnected is idempotent.

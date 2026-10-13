@@ -313,6 +313,18 @@ public sealed class RideEngineTests
     }
 
     [TestMethod]
+    public async Task Disconnect_button_halts_as_a_user_stop()
+    {
+        var rig = await Rig.StartAsync();
+        await rig.PlayAtAsync(45);
+
+        await rig.Js.Treadmill.DisconnectAsync();
+
+        Assert.AreEqual(RideStatus.Halted, rig.Engine.Status);
+        Assert.AreEqual(HaltReason.StoppedByUser, rig.Engine.HaltReason);
+    }
+
+    [TestMethod]
     public async Task Safety_key_halts_and_pauses_the_video()
     {
         var rig = await Rig.StartAsync();
