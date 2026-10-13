@@ -1,0 +1,24 @@
+@implements IAsyncDisposable
+@inject IVideoPlayer Player
+
+@* The YouTube iframe is created inside this container by youtube.js. *@
+<div class="video" @ref="_container"></div>
+
+@code {
+    private ElementReference _container;
+    private string? _loadedId;
+
+    [Parameter, EditorRequired]
+    public string? VideoId { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (VideoId is null || VideoId == _loadedId)
+            return;
+
+        _loadedId = VideoId;
+        await Player.LoadAsync(_container, VideoId);
+    }
+
+    public async ValueTask DisposeAsync() => await Player.UnloadAsync();
+}

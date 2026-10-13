@@ -2,6 +2,7 @@ using Blazor.WinOld;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using TrailFtms.Services.Bluetooth;
+using TrailFtms.Services.Video;
 
 namespace TrailFtms.Tests.Fakes;
 
@@ -9,6 +10,7 @@ namespace TrailFtms.Tests.Fakes;
 public sealed class AppTestContext : BunitContext
 {
     public FakeFtmsJs Ftms { get; } = new();
+    public FakeVideoPlayer Video { get; } = new();
 
     public AppTestContext()
     {
@@ -16,5 +18,6 @@ public sealed class AppTestContext : BunitContext
         Services.AddWinOldComponents();
         Services.AddLocalization();
         Services.AddSingleton<IFtmsTreadmill>(Ftms.Treadmill);
+        Services.AddSingleton<IVideoPlayer>(Video);
     }
 }
