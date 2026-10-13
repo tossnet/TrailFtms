@@ -291,4 +291,88 @@
   <data name="ResumeSync" xml:space="preserve">
     <value>Relancer la synchro</value>
   </data>
+  <data name="SafetyTitle" xml:space="preserve">
+    <value>Avant de commencer</value>
+  </data>
+  <data name="SafetyIntro" xml:space="preserve">
+    <value>TrailFtms pilote automatiquement la vitesse et l'inclinaison de ton tapis de course.</value>
+  </data>
+  <data name="SafetyKey" xml:space="preserve">
+    <value>Attache toujours la clé de sécurité du tapis à tes vêtements : c'est le seul arrêt qui fonctionne même si l'application ou le Bluetooth ne répond plus.</value>
+  </data>
+  <data name="SafetyStop" xml:space="preserve">
+    <value>Le bouton STOP (ou les touches Espace et Échap) arrête le tapis et la vidéo à tout moment.</value>
+  </data>
+  <data name="SafetyLimits" xml:space="preserve">
+    <value>Règle des vitesse et inclinaison maximales adaptées à ton niveau dans les réglages.</value>
+  </data>
+  <data name="SafetyResponsibility" xml:space="preserve">
+    <value>L'application est fournie sans garantie : tu l'utilises sous ta propre responsabilité.</value>
+  </data>
+  <data name="SafetyAccept" xml:space="preserve">
+    <value>J'ai compris</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Réglages</value>
+  </data>
+  <data name="SpeedFactor" xml:space="preserve">
+    <value>Allure (multiplicateur de vitesse)</value>
+  </data>
+  <data name="SpeedFactorHelp" xml:space="preserve">
+    <value>Appliqué à toutes les vitesses des programmes : 90 % pour ralentir, 110 % pour accélérer.</value>
+  </data>
+  <data name="Limits" xml:space="preserve">
+    <value>Limites de sécurité</value>
+  </data>
+  <data name="LimitSpeed" xml:space="preserve">
+    <value>Limiter la vitesse</value>
+  </data>
+  <data name="LimitIncline" xml:space="preserve">
+    <value>Limiter l'inclinaison</value>
+  </data>
+  <data name="MaxSpeed" xml:space="preserve">
+    <value>Vitesse maximale (km/h)</value>
+  </data>
+  <data name="MaxIncline" xml:space="preserve">
+    <value>Inclinaison maximale (%)</value>
+  </data>
+  <data name="LimitsHelp" xml:space="preserve">
+    <value>Appliquées avant tout envoi au tapis, en mode programme comme en pilotage manuel.</value>
+  </data>
+  <data name="PauseTitle" xml:space="preserve">
+    <value>Quand la vidéo est en pause</value>
+  </data>
+  <data name="Pause_Nothing" xml:space="preserve">
+    <value>Ne rien changer</value>
+  </data>
+  <data name="Pause_SlowDown" xml:space="preserve">
+    <value>Ralentir à une vitesse de marche</value>
+  </data>
+  <data name="Pause_PauseTreadmill" xml:space="preserve">
+    <value>Mettre le tapis en pause</value>
+  </data>
+  <data name="PauseSpeed" xml:space="preserve">
+    <value>Vitesse de marche (km/h)</value>
+  </data>
+  <data name="Saved" xml:space="preserve">
+    <value>Réglages enregistrés.</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>Retour</value>
+  </data>
+  <data name="Fullscreen" xml:space="preserve">
+    <value>Plein écran</value>
+  </data>
+  <data name="Pace" xml:space="preserve">
+    <value>Allure</value>
+  </data>
+  <data name="Next" xml:space="preserve">
+    <value>Ensuite</value>
+  </data>
+  <data name="NextIn" xml:space="preserve">
+    <value>dans {0}</value>
+  </data>
+  <data name="InclineProfile" xml:space="preserve">
+    <value>Profil d'inclinaison du parcours</value>
+  </data>
 </root>

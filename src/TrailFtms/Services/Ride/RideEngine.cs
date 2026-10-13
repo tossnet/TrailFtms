@@ -272,19 +272,9 @@ public sealed class RideEngine : IAsyncDisposable
         }
     }
 
-    private double SpeedTarget(double kmh)
-    {
-        if (Settings.MaxSpeed is { } max)
-            kmh = Math.Min(kmh, max);
-        return _treadmill.SpeedRange?.Clamp(kmh) ?? Math.Round(Math.Max(0, kmh), 2);
-    }
+    private double SpeedTarget(double kmh) => _treadmill.ClampSpeed(kmh);
 
-    private double InclineTarget(double percent)
-    {
-        if (Settings.MaxIncline is { } max)
-            percent = Math.Min(percent, max);
-        return _treadmill.InclineRange?.Clamp(percent) ?? Math.Round(percent, 1);
-    }
+    private double InclineTarget(double percent) => _treadmill.ClampIncline(percent);
 
     private void Halt(HaltReason reason)
     {

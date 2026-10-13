@@ -1,15 +1,165 @@
-.sync {
+/* Ride mode: the page takes the whole screen. Landscape: video + profile on the left, panel on the right. */
+.ride {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(15rem, 26vw, 21rem);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "video panel"
+        "profile panel";
+    background: var(--tf-ride-bg);
+    color: var(--tf-ride-fg);
+}
+
+.ride-video {
+    grid-area: video;
+    min-height: 0;
+    background: #000;
+}
+
+    /* The iframe fills the area, YouTube letterboxes the picture itself. */
+    .ride-video ::deep .video {
+        width: 100%;
+        height: 100%;
+        aspect-ratio: auto;
+    }
+
+.ride-profile {
+    grid-area: profile;
+    height: clamp(3.5rem, 13vh, 6.5rem);
+}
+
+.ride-panel {
+    grid-area: panel;
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 0;
+    padding: 0.75rem;
+    overflow-y: auto;
+    border-left: 1px solid var(--tf-ride-border);
+}
+
+.panel-head {
+    display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 0.5rem;
 }
 
-.sync ::deep .stop {
-    min-width: 10rem;
-    font-weight: bold;
-    color: #fff;
-    background: #c42b1c;
-    border-color: #a11d12;
+    .panel-head .title {
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+.metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.metric {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+    .metric.next {
+        grid-column: 1 / -1;
+    }
+
+.label {
+    font-size: 0.85rem;
+    color: var(--tf-muted);
+}
+
+.value {
+    font-size: clamp(1.5rem, 3.2vw, 2.4rem);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+    .value small {
+        font-size: 0.45em;
+    }
+
+.metric.next .value {
+    font-size: clamp(1.2rem, 2.4vw, 1.6rem);
+}
+
+.target {
+    font-size: 0.9rem;
+    color: var(--tf-accent);
+    font-variant-numeric: tabular-nums;
+}
+
+.pace, .tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pace-value {
+    min-width: 3.5rem;
+    text-align: center;
+    font-size: 1.2rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.status {
+    font-size: 0.85rem;
+    color: var(--tf-muted);
+}
+
+/* STOP always visible at the bottom of the panel. */
+.stop-area {
+    position: sticky;
+    bottom: 0;
+    margin-top: auto;
+    padding-top: 0.5rem;
+    background: var(--tf-ride-bg);
+}
+
+    .stop-area ::deep .stop {
+        width: 100%;
+        min-height: 4.5rem;
+        font-size: 1.6rem;
+        font-weight: bold;
+        color: #fff;
+        background: var(--tf-stop);
+        border-color: var(--tf-stop-border);
+    }
+
+/* Portrait: video, profile, then the panel below (STOP still pinned at the bottom of the screen). */
+@media (orientation: portrait) {
+    .ride {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto auto minmax(0, 1fr);
+        grid-template-areas:
+            "video"
+            "profile"
+            "panel";
+    }
+
+    .ride-video {
+        aspect-ratio: 16 / 9;
+    }
+
+    .ride-panel {
+        border-left: none;
+        border-top: 1px solid var(--tf-ride-border);
+    }
+
+    .value {
+        font-size: clamp(1.6rem, 6vw, 2.6rem);
+    }
+
+    .metric.next .value {
+        font-size: clamp(1.2rem, 4.5vw, 1.8rem);
+    }
 }

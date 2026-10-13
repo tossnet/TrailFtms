@@ -1,0 +1,40 @@
+@implements IDisposable
+@inject SettingsStore Settings
+@inject IStringLocalizer<Strings> L
+
+@if (_loaded && !Settings.SafetyAccepted)
+{
+    <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="safety-title">
+        <div class="notice">
+            <WinOldFrame Label="@L["SafetyTitle"]">
+                <div class="wo-col wo-gap-8" id="safety-title">
+                    <WinOldInfoBar Icon="Icon.Alert" Closable="false" Message="@L["SafetyIntro"]" />
+                    <ul>
+                        <li><strong>@L["SafetyKey"]</strong></li>
+                        <li>@L["SafetyStop"]</li>
+                        <li>@L["SafetyLimits"]</li>
+                        <li>@L["SafetyResponsibility"]</li>
+                    </ul>
+                    <div>
+                        <WinOldButton Default="true" OnClick="Settings.AcceptSafetyAsync">@L["SafetyAccept"]</WinOldButton>
+                    </div>
+                </div>
+            </WinOldFrame>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loaded;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Settings.Changed += OnChanged;
+        await Settings.LoadAsync();
+        _loaded = true;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Settings.Changed -= OnChanged;
+}

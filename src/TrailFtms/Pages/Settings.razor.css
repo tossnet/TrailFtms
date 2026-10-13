@@ -1,0 +1,12 @@
+.settings {
+    max-width: 48rem;
+}
+
+.limit {
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.settings ::deep .help {
+    opacity: 0.75;
+}

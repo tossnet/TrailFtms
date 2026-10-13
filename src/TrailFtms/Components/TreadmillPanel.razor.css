@@ -45,6 +45,6 @@
     min-width: 10rem;
     font-weight: bold;
     color: #fff;
-    background: #c42b1c;
-    border-color: #a11d12;
+    background: var(--tf-stop);
+    border-color: var(--tf-stop-border);
 }

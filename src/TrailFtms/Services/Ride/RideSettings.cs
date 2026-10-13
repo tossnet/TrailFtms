@@ -20,10 +20,4 @@ public sealed record RideSettings
 
     /// <summary>Walking speed used by <see cref="PauseBehavior.SlowDown"/>, in km/h.</summary>
     public double PauseSpeed { get; init; } = 3.0;
-
-    /// <summary>User ceiling applied before anything is sent, in km/h. Null: machine limit only.</summary>
-    public double? MaxSpeed { get; init; }
-
-    /// <summary>User ceiling applied before anything is sent, in %. Null: machine limit only.</summary>
-    public double? MaxIncline { get; init; }
 }
