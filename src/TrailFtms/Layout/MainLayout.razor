@@ -1,5 +1,10 @@
 @inherits LayoutComponentBase
 
 <WinOldAppShell Appearance="Appearance.Win10" TouchMode="true">
-    <ChildContent>@Body</ChildContent>
+    <ChildContent>
+        @* The shell does not cascade TouchMode to the page content: big touch targets everywhere. *@
+        <CascadingValue Name="TouchMode" Value="true" IsFixed="true">
+            @Body
+        </CascadingValue>
+    </ChildContent>
 </WinOldAppShell>

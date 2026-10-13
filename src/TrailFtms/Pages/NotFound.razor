@@ -1,9 +1,10 @@
 @page "/not-found"
 @layout MainLayout
+@inject IStringLocalizer<Strings> L
 
-<PageTitle>Page introuvable</PageTitle>
+<PageTitle>@L["NotFoundTitle"]</PageTitle>
 
 <div class="home">
-    <WinOldHeading Level="1">Page introuvable</WinOldHeading>
-    <WinOldLabel><a href="">Retour à l'accueil</a></WinOldLabel>
+    <WinOldHeading Level="1">@L["NotFoundTitle"]</WinOldHeading>
+    <WinOldLabel><a href="">@L["BackHome"]</a></WinOldLabel>
 </div>

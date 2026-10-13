@@ -79,6 +79,24 @@ public sealed class FtmsProtocolTests
         Assert.IsNull(FtmsProtocol.ParseControlPointResponse(Hex(hex)));
     }
 
+    // ---- Machine status ----
+
+    [TestMethod]
+    [DataRow("03", MachineStatus.StoppedBySafetyKey)]
+    [DataRow("02 01", MachineStatus.StoppedOrPausedByUser)]
+    [DataRow("05 F4 01", MachineStatus.TargetSpeedChanged)]
+    [DataRow("FF", MachineStatus.ControlPermissionLost)]
+    public void ParseMachineStatus_reads_op_code(string hex, MachineStatus expected)
+    {
+        Assert.AreEqual(expected, FtmsProtocol.ParseMachineStatus(Hex(hex)));
+    }
+
+    [TestMethod]
+    public void ParseMachineStatus_rejects_empty_frame()
+    {
+        Assert.IsNull(FtmsProtocol.ParseMachineStatus([]));
+    }
+
     // ---- Capabilities ----
 
     [TestMethod]

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppTagline" xml:space="preserve">
+    <value>Pilote ton tapis de course FTMS au rythme d'une vidéo YouTube.</value>
+  </data>
+  <data name="Treadmill" xml:space="preserve">
+    <value>Tapis de course</value>
+  </data>
+  <data name="BluetoothUnsupported" xml:space="preserve">
+    <value>Ce navigateur ne gère pas le Bluetooth. Utilise Chrome ou Edge sur Android, Windows, macOS ou ChromeOS (Firefox et iOS ne sont pas compatibles).</value>
+  </data>
+  <data name="BluetoothUnavailable" xml:space="preserve">
+    <value>Le Bluetooth est désactivé ou aucun adaptateur n'est disponible.</value>
+  </data>
+  <data name="Connect" xml:space="preserve">
+    <value>Connecter le tapis</value>
+  </data>
+  <data name="Connecting" xml:space="preserve">
+    <value>Connexion...</value>
+  </data>
+  <data name="Disconnect" xml:space="preserve">
+    <value>Déconnecter</value>
+  </data>
+  <data name="Reconnect" xml:space="preserve">
+    <value>Reconnecter</value>
+  </data>
+  <data name="NotConnected" xml:space="preserve">
+    <value>Non connecté</value>
+  </data>
+  <data name="ConnectedTo" xml:space="preserve">
+    <value>Connecté à {0}</value>
+  </data>
+  <data name="ConnectError" xml:space="preserve">
+    <value>Échec de la connexion : {0}</value>
+  </data>
+  <data name="ConnectionLostTitle" xml:space="preserve">
+    <value>Connexion perdue</value>
+  </data>
+  <data name="ConnectionLostMessage" xml:space="preserve">
+    <value>Le tapis s'est déconnecté. Aucune commande ne sera envoyée tant que tu ne te reconnectes pas.</value>
+  </data>
+  <data name="SpeedRange" xml:space="preserve">
+    <value>Vitesse : {0:0.0} à {1:0.0} km/h, pas de {2:0.0#} km/h</value>
+  </data>
+  <data name="InclineRange" xml:space="preserve">
+    <value>Inclinaison : {0:0.#} à {1:0.#} %, pas de {2:0.#} %</value>
+  </data>
+  <data name="RangeUnknown" xml:space="preserve">
+    <value>Plages non communiquées par le tapis</value>
+  </data>
+  <data name="Speed" xml:space="preserve">
+    <value>Vitesse</value>
+  </data>
+  <data name="Incline" xml:space="preserve">
+    <value>Inclinaison</value>
+  </data>
+  <data name="Distance" xml:space="preserve">
+    <value>Distance</value>
+  </data>
+  <data name="Time" xml:space="preserve">
+    <value>Temps</value>
+  </data>
+  <data name="Target" xml:space="preserve">
+    <value>Consigne</value>
+  </data>
+  <data name="Start" xml:space="preserve">
+    <value>Démarrer</value>
+  </data>
+  <data name="Pause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="Stop" xml:space="preserve">
+    <value>STOP</value>
+  </data>
+  <data name="CommandRejected" xml:space="preserve">
+    <value>Commande refusée par le tapis : {0}</value>
+  </data>
+  <data name="Result_NotSupported" xml:space="preserve">
+    <value>non supportée</value>
+  </data>
+  <data name="Result_InvalidParameter" xml:space="preserve">
+    <value>paramètre invalide</value>
+  </data>
+  <data name="Result_OperationFailed" xml:space="preserve">
+    <value>échec</value>
+  </data>
+  <data name="Result_ControlNotPermitted" xml:space="preserve">
+    <value>contrôle non autorisé</value>
+  </data>
+  <data name="NoResponse" xml:space="preserve">
+    <value>Le tapis n'a pas répondu.</value>
+  </data>
+  <data name="SafetyKeyRemoved" xml:space="preserve">
+    <value>Clé de sécurité retirée : le tapis est arrêté.</value>
+  </data>
+  <data name="StoppedFromConsole" xml:space="preserve">
+    <value>Tapis arrêté ou mis en pause depuis sa console.</value>
+  </data>
+  <data name="NotFoundTitle" xml:space="preserve">
+    <value>Page introuvable</value>
+  </data>
+  <data name="BackHome" xml:space="preserve">
+    <value>Retour à l'accueil</value>
+  </data>
+</root>
