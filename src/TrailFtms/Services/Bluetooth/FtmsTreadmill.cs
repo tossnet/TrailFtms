@@ -151,7 +151,8 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
     [JSInvokable]
     public void OnDisconnected()
     {
-        if (State is TreadmillState.Disconnected or TreadmillState.ConnectionLost)
+        // Connecting: a failed attempt is handled (and retried) by ftms.js, not a lost connection.
+        if (State is TreadmillState.Disconnected or TreadmillState.ConnectionLost or TreadmillState.Connecting)
             return;
 
         _pending?.TrySetException(new InvalidOperationException("Treadmill disconnected."));
