@@ -124,7 +124,9 @@ public sealed class EditorTests
         rig.Type("Lien ou identifiant YouTube", "KiEN4HxM4ic");
         rig.Click("Charger");
 
-        rig.Cut.WaitForAssertion(() => StringAssert.Contains(rig.Cut.Markup, "Durée de la vidéo : 51:52"), TimeSpan.FromSeconds(2));
+        rig.Ctx.Time.Advance(TimeSpan.FromMilliseconds(250)); // one refresh of the position
+
+        rig.Cut.WaitForAssertion(() => StringAssert.Contains(rig.Cut.Markup, "Durée de la vidéo : 51:52"));
     }
 
     [TestMethod]

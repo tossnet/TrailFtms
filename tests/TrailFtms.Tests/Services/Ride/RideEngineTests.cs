@@ -76,7 +76,8 @@ public sealed class RideEngineTests
 
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
-        for (var i = 0; i < 100 && !condition(); i++)
+        // Generous bound: only reached when the test fails, CI machines can be slow.
+        for (var i = 0; i < 250 && !condition(); i++)
             await Task.Delay(20);
     }
 

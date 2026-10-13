@@ -5,6 +5,7 @@
 @inject IDialogService Dialogs
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject TimeProvider Time
 @inject IStringLocalizer<Strings> L
 
 <PageTitle>@Heading - TrailFtms</PageTitle>
@@ -275,7 +276,7 @@
 
     private async Task RefreshPositionAsync(CancellationToken token)
     {
-        using var timer = new PeriodicTimer(RefreshInterval);
+        using var timer = new PeriodicTimer(RefreshInterval, Time);
         try
         {
             while (await timer.WaitForNextTickAsync(token))
