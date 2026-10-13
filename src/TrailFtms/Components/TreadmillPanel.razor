@@ -2,6 +2,8 @@
 @inject IFtmsTreadmill Treadmill
 @inject IStringLocalizer<Strings> L
 
+<StopShortcut OnStop="() => RunAsync(() => Treadmill.StopAsync(StopKind.Stop))" />
+
 <div class="panel wo-col wo-gap-16">
     <div class="metrics">
         <div class="metric">
@@ -69,13 +71,13 @@
 
     private Task ChangeSpeedAsync(double delta)
     {
-        _targetSpeed = Treadmill.SpeedRange?.Clamp(_targetSpeed + delta) ?? Math.Max(0, Math.Round(_targetSpeed + delta, 2));
+        _targetSpeed = Treadmill.ClampSpeed(_targetSpeed + delta);
         return RunAsync(() => Treadmill.SetSpeedAsync(_targetSpeed));
     }
 
     private Task ChangeInclineAsync(double delta)
     {
-        _targetIncline = Treadmill.InclineRange?.Clamp(_targetIncline + delta) ?? Math.Round(_targetIncline + delta, 1);
+        _targetIncline = Treadmill.ClampIncline(_targetIncline + delta);
         return RunAsync(() => Treadmill.SetInclineAsync(_targetIncline));
     }
 

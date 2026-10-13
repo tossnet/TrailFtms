@@ -28,6 +28,9 @@ public interface IFtmsTreadmill : IAsyncDisposable
     SupportedRange? InclineRange { get; }
     TreadmillData? LastData { get; }
 
+    /// <summary>User ceilings, applied by every speed / incline command.</summary>
+    TreadmillLimits Limits { get; set; }
+
     event Action? StateChanged;
     event Action<TreadmillData>? DataReceived;
     event Action<MachineStatus>? StatusReceived;
@@ -44,9 +47,15 @@ public interface IFtmsTreadmill : IAsyncDisposable
     Task<ControlPointResult> StartAsync();
     Task<ControlPointResult> StopAsync(StopKind kind = StopKind.Stop);
 
-    /// <summary>Sets the target speed, clamped and snapped to the machine range.</summary>
+    /// <summary>Sets the target speed, see <see cref="ClampSpeed"/>.</summary>
     Task<ControlPointResult> SetSpeedAsync(double kmh);
 
-    /// <summary>Sets the target inclination, clamped and snapped to the machine range.</summary>
+    /// <summary>Sets the target inclination, see <see cref="ClampIncline"/>.</summary>
     Task<ControlPointResult> SetInclineAsync(double percent);
+
+    /// <summary>The speed that would actually be sent: user ceiling, then machine range and step.</summary>
+    double ClampSpeed(double kmh);
+
+    /// <summary>The inclination that would actually be sent: user ceiling, then machine range and step.</summary>
+    double ClampIncline(double percent);
 }

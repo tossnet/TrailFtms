@@ -54,6 +54,20 @@ public sealed class FtmsTreadmillTests
     }
 
     [TestMethod]
+    public async Task User_limits_apply_before_machine_ranges()
+    {
+        var js = await ConnectedAsync();
+        js.Treadmill.Limits = new TreadmillLimits(MaxSpeed: 8, MaxIncline: 5);
+
+        await js.Treadmill.SetSpeedAsync(12);
+        await js.Treadmill.SetInclineAsync(9);
+
+        CollectionAssert.AreEqual(Hex("02 20 03"), js.Writes[0]); // 8.0 km/h
+        CollectionAssert.AreEqual(Hex("03 32 00"), js.Writes[1]); // 5 %
+        Assert.AreEqual(4.0, js.Treadmill.ClampSpeed(4.04), 1e-9);
+    }
+
+    [TestMethod]
     public async Task Control_not_permitted_requests_control_and_replays_once()
     {
         var js = await ConnectedAsync();

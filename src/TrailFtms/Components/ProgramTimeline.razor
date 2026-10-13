@@ -1,0 +1,82 @@
+@* Incline profile of the whole route, with the current position. A tap on a segment seeks to its start. *@
+
+<svg class="timeline" viewBox="0 0 @Width @Height" preserveAspectRatio="none" role="img" aria-label="@AriaLabel">
+    <path class="area" d="@_area" />
+    <path class="line" d="@_line" />
+    @foreach (var hit in _hits)
+    {
+        <rect class="hit" x="@F(hit.X)" y="0" width="@F(hit.W)" height="@Height" @onclick="() => OnSeek.InvokeAsync(hit.T)" />
+    }
+    <line class="cursor" x1="@F(CursorX)" y1="0" x2="@F(CursorX)" y2="@Height" />
+</svg>
+
+@code {
+    private const double Width = 1000;
+    private const double Height = 100;
+    private const double Padding = 6;
+
+    private string _area = "";
+    private string _line = "";
+    private List<(double X, double W, double T)> _hits = [];
+    private RideProgram? _drawnProgram;
+    private double _drawnDuration;
+
+    [Parameter, EditorRequired]
+    public RideProgram Program { get; set; } = null!;
+
+    /// <summary>Total duration in seconds (program duration, else video duration).</summary>
+    [Parameter]
+    public double Duration { get; set; }
+
+    /// <summary>Current video time in seconds.</summary>
+    [Parameter]
+    public double Position { get; set; }
+
+    [Parameter]
+    public EventCallback<double> OnSeek { get; set; }
+
+    [Parameter]
+    public string? AriaLabel { get; set; }
+
+    private double Total => Duration > 0 ? Duration : (Program.Segments.Count > 0 ? Program.Segments[^1].T + 60 : 60);
+
+    private double CursorX => Math.Clamp(Position / Total, 0, 1) * Width;
+
+    // The path only depends on the program and the duration: rebuild it only when they change.
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(Program, _drawnProgram) && Total == _drawnDuration)
+            return;
+        _drawnProgram = Program;
+        _drawnDuration = Total;
+
+        var segments = Program.Segments;
+        if (segments.Count == 0)
+        {
+            _area = _line = "";
+            _hits = [];
+            return;
+        }
+
+        var low = Math.Min(0, segments.Min(s => s.Incline));
+        var high = Math.Max(1, segments.Max(s => s.Incline));
+        double X(double t) => Math.Clamp(t / Total, 0, 1) * Width;
+        double Y(double incline) => Height - Padding - (incline - low) / (high - low) * (Height - 2 * Padding);
+
+        // Step chart: each segment is flat until the next one.
+        var line = new System.Text.StringBuilder($"M0,{F(Y(segments[0].Incline))}");
+        _hits = new List<(double, double, double)>(segments.Count);
+        for (var i = 0; i < segments.Count; i++)
+        {
+            var start = X(segments[i].T);
+            var end = i + 1 < segments.Count ? X(segments[i + 1].T) : Width;
+            var y = F(Y(segments[i].Incline));
+            line.Append($" V{y} H{F(end)}");
+            _hits.Add((start, Math.Max(end - start, 0), segments[i].T));
+        }
+        _line = line.ToString();
+        _area = $"{_line} V{F(Height)} H0 Z";
+    }
+
+    private static string F(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+}

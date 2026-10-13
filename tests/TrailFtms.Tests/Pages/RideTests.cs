@@ -85,7 +85,8 @@ public sealed class RideTests
         var cut = ctx.Render<Ride>();
 
         cut.WaitForAssertion(() => CollectionAssert.AreEqual(new[] { "KiEN4HxM4ic" }, ctx.Video.Loads));
-        Assert.AreEqual("Blue Pools, Nouvelle-Zélande", cut.Find(".hd-1").TextContent);
+        Assert.AreEqual("Blue Pools, Nouvelle-Zélande", cut.Find(".panel-head .title").TextContent);
+        Assert.HasCount(1, cut.FindAll(".timeline"));
         Assert.IsEmpty(cut.FindAll("input"));
     }
 
@@ -119,7 +120,8 @@ public sealed class RideTests
         using var _ = ctx;
 
         StringAssert.Contains(cut.Markup, "Tapis non connecté");
-        Assert.IsFalse(cut.FindAll("button").Any(b => b.TextContent.Trim() == "STOP"));
+        Assert.IsTrue(cut.FindAll("button").Any(b => b.TextContent.Trim() == "STOP"), "STOP is always visible");
+        Assert.IsEmpty(cut.FindAll(".target"));
     }
 
     [TestMethod]
@@ -132,9 +134,13 @@ public sealed class RideTests
         ctx.Video.CurrentTime = 45; // Blue Pools: 3.0 km/h, 3 % from 0:40 to 0:50
         await cut.InvokeAsync(() => ctx.Video.SetState(VideoState.Playing));
 
-        cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Consigne : 3,0 km/h, 3 %"));
+        cut.WaitForAssertion(() => Assert.HasCount(2, cut.FindAll(".target").Take(2).Where(t => t.TextContent.StartsWith("Consigne"))));
+        var targets = cut.FindAll(".target").Select(t => t.TextContent).ToList();
+        Assert.AreEqual("Consigne 3,0", targets[0]);
+        Assert.AreEqual("Consigne 3", targets[1]);
+        Assert.AreEqual("dans 0:05", targets[2]); // next: 1 % at 0:50
+        StringAssert.Contains(cut.Find(".metric.next .value").TextContent, "1 %");
         StringAssert.Contains(cut.Markup, "Synchro active");
-        StringAssert.Contains(cut.Markup, "prochain changement dans 0:05");
         CollectionAssert.AreEqual(new byte[] { 0x07 }, ctx.Ftms.Writes[0]);
     }
 
@@ -166,5 +172,50 @@ public sealed class RideTests
 
         cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Connexion au tapis perdue"));
         Assert.IsFalse(cut.FindAll("button").Any(b => b.TextContent.Contains("Relancer la synchro")));
+    }
+
+    [TestMethod]
+    public async Task Pace_buttons_change_the_speed_factor_live()
+    {
+        var (ctx, cut) = await RenderProgramAsync(connected: true);
+        using var _ = ctx;
+        ctx.Video.CurrentTime = 45;
+        await cut.InvokeAsync(() => ctx.Video.SetState(VideoState.Playing));
+        cut.WaitForAssertion(() => Assert.AreEqual("Consigne 3,0", cut.FindAll(".target")[0].TextContent));
+
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "+5 %").Click();
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "+5 %").Click();
+
+        Assert.AreEqual("110 %", cut.Find(".pace-value").TextContent.Trim());
+        Assert.AreEqual(1.1, ctx.Services.GetRequiredService<TrailFtms.Services.Settings.SettingsStore>().Current.Ride.SpeedFactor, 1e-9);
+        cut.WaitForAssertion(() => Assert.AreEqual("Consigne 3,3", cut.FindAll(".target")[0].TextContent), TimeSpan.FromSeconds(2));
+    }
+
+    [TestMethod]
+    public async Task Keyboard_shortcut_stops_belt_and_video()
+    {
+        var (ctx, cut) = await RenderProgramAsync(connected: true);
+        using var _ = ctx;
+        ctx.Video.CurrentTime = 45;
+        await cut.InvokeAsync(() => ctx.Video.SetState(VideoState.Playing));
+
+        await cut.InvokeAsync(() => cut.FindComponent<StopShortcut>().Instance.OnStopShortcut());
+
+        CollectionAssert.AreEqual(new byte[] { 0x08, 0x01 }, ctx.Ftms.Writes[^1]);
+        Assert.AreEqual(VideoState.Paused, ctx.Video.State);
+        cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Arrêt demandé."));
+    }
+
+    [TestMethod]
+    public async Task Stop_works_even_without_a_running_sync()
+    {
+        using var ctx = new AppTestContext();
+        await ctx.Ftms.Treadmill.ConnectAsync();
+        ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("ride?v=KiEN4HxM4ic");
+        var cut = ctx.Render<Ride>();
+
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "STOP").Click();
+
+        CollectionAssert.AreEqual(new byte[] { 0x08, 0x01 }, ctx.Ftms.Writes[^1]);
     }
 }

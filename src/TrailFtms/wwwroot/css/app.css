@@ -1,5 +1,31 @@
 :root {
     --tf-gap: 1rem;
+    --tf-accent: #005fb8;
+    --tf-stop: #c42b1c;
+    --tf-stop-border: #a11d12;
+    /* Ride mode */
+    --tf-ride-bg: #f3f3f3;
+    --tf-ride-fg: #1b1b1b;
+    --tf-ride-border: #d1d1d1;
+    --tf-muted: #5c5c5c;
+    --tf-profile-bg: #ffffff;
+    --tf-profile-fill: rgba(16, 124, 16, 0.22);
+    --tf-profile-line: #107c10;
+    --tf-profile-hover: rgba(0, 0, 0, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --tf-accent: #60cdff;
+        --tf-ride-bg: #1c1c1c;
+        --tf-ride-fg: #f3f3f3;
+        --tf-ride-border: #3a3a3a;
+        --tf-muted: #b5b5b5;
+        --tf-profile-bg: #272727;
+        --tf-profile-fill: rgba(108, 203, 95, 0.28);
+        --tf-profile-line: #6ccb5f;
+        --tf-profile-hover: rgba(255, 255, 255, 0.08);
+    }
 }
 
 html, body {

@@ -25,6 +25,7 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
     public SupportedRange? SpeedRange { get; private set; }
     public SupportedRange? InclineRange { get; private set; }
     public TreadmillData? LastData { get; private set; }
+    public TreadmillLimits Limits { get; set; } = new();
 
     public event Action? StateChanged;
     public event Action<TreadmillData>? DataReceived;
@@ -102,10 +103,24 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
     public Task<ControlPointResult> StopAsync(StopKind kind = StopKind.Stop) => SendAsync(FtmsProtocol.StopOrPause(kind));
 
     public Task<ControlPointResult> SetSpeedAsync(double kmh) =>
-        SendAsync(FtmsProtocol.SetTargetSpeed(SpeedRange?.Clamp(kmh) ?? kmh));
+        SendAsync(FtmsProtocol.SetTargetSpeed(ClampSpeed(kmh)));
 
     public Task<ControlPointResult> SetInclineAsync(double percent) =>
-        SendAsync(FtmsProtocol.SetTargetInclination(InclineRange?.Clamp(percent) ?? percent));
+        SendAsync(FtmsProtocol.SetTargetInclination(ClampIncline(percent)));
+
+    public double ClampSpeed(double kmh)
+    {
+        if (Limits.MaxSpeed is { } max)
+            kmh = Math.Min(kmh, max);
+        return SpeedRange?.Clamp(kmh) ?? Math.Round(Math.Max(0, kmh), 2);
+    }
+
+    public double ClampIncline(double percent)
+    {
+        if (Limits.MaxIncline is { } max)
+            percent = Math.Min(percent, max);
+        return InclineRange?.Clamp(percent) ?? Math.Round(percent, 1);
+    }
 
     // ---- Callbacks from ftms.js ----
 

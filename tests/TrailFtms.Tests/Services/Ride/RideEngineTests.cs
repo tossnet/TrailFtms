@@ -189,7 +189,8 @@ public sealed class RideEngineTests
     [TestMethod]
     public async Task User_ceilings_are_applied_before_sending()
     {
-        var rig = await Rig.StartAsync(new RideSettings { MaxSpeed = 2.5, MaxIncline = 2 });
+        var rig = await Rig.StartAsync();
+        rig.Js.Treadmill.Limits = new TreadmillLimits(MaxSpeed: 2.5, MaxIncline: 2);
 
         await rig.PlayAtAsync(45); // program: 3 km/h, 3 %
 

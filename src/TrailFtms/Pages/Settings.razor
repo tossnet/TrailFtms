@@ -1,0 +1,88 @@
+@page "/settings"
+@inject SettingsStore Store
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Strings> L
+
+<PageTitle>@L["Settings"] - TrailFtms</PageTitle>
+
+<div class="home wo-col wo-gap-16 settings">
+    <WinOldHeading Level="1">@L["Settings"]</WinOldHeading>
+
+    @if (_settings is not null)
+    {
+        <WinOldFrame Label="@L["Pace"]">
+            <div class="wo-col wo-gap-8">
+                <WinOldNumberBox TValue="int" Label="@($"{L["SpeedFactor"]} (%)")" Min="50" Max="150" Step="5"
+                                 Value="SpeedPercent" ValueChanged="SetSpeedPercentAsync" />
+                <WinOldLabel Class="help">@L["SpeedFactorHelp"]</WinOldLabel>
+            </div>
+        </WinOldFrame>
+
+        <WinOldFrame Label="@L["Limits"]">
+            <div class="wo-col wo-gap-8">
+                <div class="wo-row wo-gap-16 limit">
+                    <WinOldCheckBox Label="@L["LimitSpeed"]" Value="_settings.MaxSpeed is not null" ValueChanged="ToggleMaxSpeedAsync" />
+                    <WinOldNumberBox TValue="double" Label="@L["MaxSpeed"]" Min="1" Max="30" Step="0.5"
+                                     Disabled="_settings.MaxSpeed is null" Value="_settings.MaxSpeed ?? DefaultMaxSpeed"
+                                     ValueChanged="v => SaveAsync(_settings with { MaxSpeed = Math.Clamp(v, 1, 30) })" />
+                </div>
+                <div class="wo-row wo-gap-16 limit">
+                    <WinOldCheckBox Label="@L["LimitIncline"]" Value="_settings.MaxIncline is not null" ValueChanged="ToggleMaxInclineAsync" />
+                    <WinOldNumberBox TValue="double" Label="@L["MaxIncline"]" Min="0" Max="30" Step="1"
+                                     Disabled="_settings.MaxIncline is null" Value="_settings.MaxIncline ?? DefaultMaxIncline"
+                                     ValueChanged="v => SaveAsync(_settings with { MaxIncline = Math.Clamp(v, 0, 30) })" />
+                </div>
+                <WinOldLabel Class="help">@L["LimitsHelp"]</WinOldLabel>
+            </div>
+        </WinOldFrame>
+
+        <WinOldFrame Label="@L["PauseTitle"]">
+            <div class="wo-col wo-gap-8">
+                <WinOldOptionButtonGroup T="PauseBehavior" Value="_settings.Ride.PauseBehavior"
+                                         ValueChanged="v => SaveAsync(_settings with { Ride = _settings.Ride with { PauseBehavior = v } })">
+                    @foreach (var behavior in Enum.GetValues<PauseBehavior>())
+                    {
+                        <WinOldOptionButton T="PauseBehavior" Value="behavior" Label="@L[$"Pause_{behavior}"]" />
+                    }
+                </WinOldOptionButtonGroup>
+                <WinOldNumberBox TValue="double" Label="@L["PauseSpeed"]" Min="1" Max="8" Step="0.5"
+                                 Disabled="_settings.Ride.PauseBehavior != PauseBehavior.SlowDown" Value="_settings.Ride.PauseSpeed"
+                                 ValueChanged="v => SaveAsync(_settings with { Ride = _settings.Ride with { PauseSpeed = Math.Clamp(v, 1, 8) } })" />
+            </div>
+        </WinOldFrame>
+
+        <div>
+            <WinOldButton OnClick="@(() => Navigation.NavigateTo(""))">@L["Back"]</WinOldButton>
+        </div>
+    }
+</div>
+
+@code {
+    private const double DefaultMaxSpeed = 10;
+    private const double DefaultMaxIncline = 10;
+
+    private AppSettings? _settings;
+
+    private int SpeedPercent => (int)Math.Round(_settings!.Ride.SpeedFactor * 100);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Store.LoadAsync();
+        _settings = Store.Current;
+    }
+
+    private Task SetSpeedPercentAsync(int percent) =>
+        SaveAsync(_settings! with { Ride = _settings.Ride with { SpeedFactor = Math.Clamp(percent, 50, 150) / 100.0 } });
+
+    private Task ToggleMaxSpeedAsync(bool on) =>
+        SaveAsync(_settings! with { MaxSpeed = on ? DefaultMaxSpeed : null });
+
+    private Task ToggleMaxInclineAsync(bool on) =>
+        SaveAsync(_settings! with { MaxIncline = on ? DefaultMaxIncline : null });
+
+    private async Task SaveAsync(AppSettings settings)
+    {
+        _settings = settings;
+        await Store.SaveAsync(settings);
+    }
+}
