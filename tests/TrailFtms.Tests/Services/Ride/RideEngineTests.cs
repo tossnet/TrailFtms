@@ -76,7 +76,8 @@ public sealed class RideEngineTests
 
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
-        for (var i = 0; i < 100 && !condition(); i++)
+        // Generous bound: only reached when the test fails, CI machines can be slow.
+        for (var i = 0; i < 250 && !condition(); i++)
             await Task.Delay(20);
     }
 
@@ -147,6 +148,64 @@ public sealed class RideEngineTests
         await rig.TicksAsync(4);
 
         Assert.IsEmpty(rig.TakeSent());
+    }
+
+    [TestMethod]
+    public async Task Slow_video_start_does_not_start_the_belt_before_the_video_plays()
+    {
+        var rig = await Rig.StartAsync();
+
+        rig.Video.SetState(VideoState.Buffering); // play pressed, video still loading
+        await rig.TicksAsync(20);
+        Assert.IsEmpty(rig.TakeSent());
+
+        await rig.PlayAtAsync(0);
+        CollectionAssert.AreEqual(new[] { "start", "speed 1", "incline 0" }, rig.TakeSent());
+    }
+
+    [TestMethod]
+    public async Task Seek_during_the_ride_reapplies_the_segment_while_buffering()
+    {
+        var rig = await Rig.StartAsync();
+        await rig.PlayAtAsync(65);
+        rig.TakeSent();
+
+        rig.Video.CurrentTime = 45; // seek back: YouTube buffers before playing again
+        rig.Video.SetState(VideoState.Buffering);
+
+        CollectionAssert.AreEqual(new[] { "speed 3", "incline 3" }, rig.TakeSent());
+    }
+
+    [TestMethod]
+    public async Task After_a_treadmill_pause_the_belt_restarts_only_when_the_video_plays()
+    {
+        var rig = await Rig.StartAsync(new RideSettings { PauseBehavior = PauseBehavior.PauseTreadmill });
+        await rig.PlayAtAsync(45);
+        rig.Video.SetState(VideoState.Paused);
+        rig.TakeSent();
+
+        rig.Video.SetState(VideoState.Buffering); // resume pressed, video still loading
+        await rig.TicksAsync(20);
+        Assert.IsEmpty(rig.TakeSent());
+
+        await rig.PlayAtAsync(46);
+        CollectionAssert.AreEqual(new[] { "start" }, rig.TakeSent());
+    }
+
+    [TestMethod]
+    public async Task After_a_slow_down_the_speed_comes_back_only_when_the_video_plays()
+    {
+        var rig = await Rig.StartAsync(new RideSettings { PauseBehavior = PauseBehavior.SlowDown, PauseSpeed = 2.0 });
+        await rig.PlayAtAsync(65);
+        rig.Video.SetState(VideoState.Paused);
+        rig.TakeSent();
+
+        rig.Video.SetState(VideoState.Buffering);
+        await rig.TicksAsync(20);
+        Assert.IsEmpty(rig.TakeSent());
+
+        await rig.PlayAtAsync(66);
+        CollectionAssert.AreEqual(new[] { "speed 3.2" }, rig.TakeSent());
     }
 
     [TestMethod]

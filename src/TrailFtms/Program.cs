@@ -13,6 +13,7 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddWinOldComponents();
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddLocalization();
 builder.Services.AddScoped<IFtmsTreadmill, FtmsTreadmill>();
 builder.Services.AddScoped<IVideoPlayer, YouTubePlayer>();

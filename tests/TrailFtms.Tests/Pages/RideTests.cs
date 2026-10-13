@@ -188,7 +188,9 @@ public sealed class RideTests
 
         Assert.AreEqual("110 %", cut.Find(".pace-value").TextContent.Trim());
         Assert.AreEqual(1.1, ctx.Services.GetRequiredService<TrailFtms.Services.Settings.SettingsStore>().Current.Ride.SpeedFactor, 1e-9);
-        cut.WaitForAssertion(() => Assert.AreEqual("Consigne 3,3", cut.FindAll(".target")[0].TextContent), TimeSpan.FromSeconds(2));
+        ctx.Time.Advance(TimeSpan.FromMilliseconds(250)); // next engine tick applies the new factor
+
+        cut.WaitForAssertion(() => Assert.AreEqual("Consigne 3,3", cut.FindAll(".target")[0].TextContent));
     }
 
     [TestMethod]

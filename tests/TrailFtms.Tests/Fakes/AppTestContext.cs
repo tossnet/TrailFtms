@@ -1,6 +1,7 @@
 using Blazor.WinOld;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using TrailFtms.Services.Bluetooth;
 using TrailFtms.Services.Programs;
 using TrailFtms.Services.Settings;
@@ -16,6 +17,9 @@ public sealed class AppTestContext : BunitContext
     public FakeVideoPlayer Video { get; } = new();
     public FakeBrowserStorage Storage { get; } = new();
 
+    /// <summary>Clock of the pages and the ride engine: time only moves when a test calls Advance.</summary>
+    public FakeTimeProvider Time { get; } = new();
+
     public AppTestContext()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -25,6 +29,7 @@ public sealed class AppTestContext : BunitContext
         Services.AddSingleton<IVideoPlayer>(Video);
         Services.AddSingleton(WwwrootHttpHandler.CreateClient());
         Services.AddSingleton<IBrowserStorage>(Storage);
+        Services.AddSingleton<TimeProvider>(Time);
         Services.AddSingleton<ProgramStore>();
         Services.AddSingleton<SettingsStore>();
     }

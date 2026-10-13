@@ -5,6 +5,7 @@
 @inject IDialogService Dialogs
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject TimeProvider Time
 @inject IStringLocalizer<Strings> L
 
 <PageTitle>@Heading - TrailFtms</PageTitle>
@@ -92,7 +93,7 @@
                 <WinOldButton OnClick="ExportAsync">@L["Export"]</WinOldButton>
                 @if (_savedId is not null && !_dirty)
                 {
-                    <WinOldButton OnClick="@(() => Navigation.NavigateTo($"ride?program={_savedId}"))">@L["Ride"]</WinOldButton>
+                    <WinOldButton Class="primary" OnClick="@(() => Navigation.NavigateTo($"ride?program={_savedId}"))"><BiIcon Name="BiIconName.PlayFill" /> @L["Start"]</WinOldButton>
                 }
                 <WinOldButton OnClick="BackAsync">@L["Back"]</WinOldButton>
             </div>
@@ -275,7 +276,7 @@
 
     private async Task RefreshPositionAsync(CancellationToken token)
     {
-        using var timer = new PeriodicTimer(RefreshInterval);
+        using var timer = new PeriodicTimer(RefreshInterval, Time);
         try
         {
             while (await timer.WaitForNextTickAsync(token))

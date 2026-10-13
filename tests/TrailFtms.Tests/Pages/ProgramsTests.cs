@@ -33,7 +33,7 @@ public sealed class ProgramsTests
         var cut = ctx.Render<TrailFtms.Pages.Programs>();
         cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Blue Pools"));
 
-        cut.FindAll("button").First(b => b.TextContent.Trim() == "Rouler").Click();
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "Démarrer").Click();
 
         StringAssert.EndsWith(ctx.Services.GetRequiredService<NavigationManager>().Uri, "ride?program=blue-pools-nz");
     }
@@ -70,5 +70,32 @@ public sealed class ProgramsTests
         cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Le fichier « bad.json » n'est pas un programme valide"));
         StringAssert.Contains(cut.Markup, "vitesse hors limites à 2:05 (0 à 30 km/h)");
         Assert.IsNull(ctx.Services.GetRequiredService<ProgramStore>().Find("bad"));
+    }
+
+    [TestMethod]
+    public void Program_shows_its_video_thumbnail_and_a_blue_start_button()
+    {
+        using var ctx = new AppTestContext();
+        var cut = ctx.Render<TrailFtms.Pages.Programs>();
+        cut.WaitForAssertion(() => Assert.HasCount(1, cut.FindAll("img.thumb")));
+
+        Assert.AreEqual("https://i.ytimg.com/vi/KiEN4HxM4ic/mqdefault.jpg", cut.Find("img.thumb").GetAttribute("src"));
+        var start = cut.FindAll("button").Single(b => b.TextContent.Trim() == "Démarrer");
+        StringAssert.Contains(start.ClassName, "primary");
+
+        cut.Find("img.thumb").Click();
+        StringAssert.EndsWith(ctx.Services.GetRequiredService<NavigationManager>().Uri, "ride?program=blue-pools-nz");
+    }
+
+    [TestMethod]
+    public void Home_button_goes_back_to_the_home_page()
+    {
+        using var ctx = new AppTestContext();
+        ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("programs");
+        var cut = ctx.Render<TrailFtms.Pages.Programs>();
+
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Accueil").Click();
+
+        Assert.AreEqual("http://localhost/", ctx.Services.GetRequiredService<NavigationManager>().Uri);
     }
 }
