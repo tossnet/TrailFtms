@@ -25,6 +25,8 @@ public sealed class EditorTests
         public void Dispose() => Ctx.Dispose();
     }
 
+    private static readonly int BluePoolsPoints = WwwrootHttpHandler.ShippedProgram("blue-pools-nz").Segments.Count;
+
     private static Rig Render(string url = "editor")
     {
         var ctx = new AppTestContext();
@@ -101,11 +103,11 @@ public sealed class EditorTests
     public void Existing_program_is_loaded_and_edited()
     {
         using var rig = Render("editor?program=blue-pools-nz");
-        rig.Cut.WaitForAssertion(() => Assert.HasCount(10, rig.Cut.FindAll(".point")));
+        rig.Cut.WaitForAssertion(() => Assert.HasCount(BluePoolsPoints, rig.Cut.FindAll(".point")));
 
         rig.Cut.FindAll(".point")[1].QuerySelectorAll("input")[0].Change("3.4"); // 0:40 speed
         rig.Cut.FindAll(".point")[0].QuerySelectorAll("button").Last().Click(); // remove the 0:00 point
-        rig.Cut.WaitForAssertion(() => Assert.HasCount(9, rig.Cut.FindAll(".point")));
+        rig.Cut.WaitForAssertion(() => Assert.HasCount(BluePoolsPoints - 1, rig.Cut.FindAll(".point")));
         AddPointAt(rig, 0, "1", "0"); // and add it back
         rig.Click("Enregistrer");
 
@@ -113,7 +115,7 @@ public sealed class EditorTests
         var saved = rig.Store.Find("blue-pools-nz")!;
         Assert.IsTrue(rig.Store.IsImported("blue-pools-nz"));
         Assert.AreEqual(new ProgramSegment(40, 3.4, 3), saved.Segments[1]);
-        Assert.HasCount(10, saved.Segments);
+        Assert.HasCount(BluePoolsPoints, saved.Segments);
     }
 
     [TestMethod]
@@ -160,7 +162,7 @@ public sealed class EditorTests
     public void Tapping_a_point_time_seeks_the_video()
     {
         using var rig = Render("editor?program=blue-pools-nz");
-        rig.Cut.WaitForAssertion(() => Assert.HasCount(10, rig.Cut.FindAll(".point")));
+        rig.Cut.WaitForAssertion(() => Assert.HasCount(BluePoolsPoints, rig.Cut.FindAll(".point")));
 
         rig.Click("2:05");
 
