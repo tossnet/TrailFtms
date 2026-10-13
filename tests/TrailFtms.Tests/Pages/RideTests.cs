@@ -100,4 +100,71 @@ public sealed class RideTests
         cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Programme introuvable."));
         Assert.IsEmpty(ctx.Video.Loads);
     }
+
+    private static async Task<(AppTestContext Ctx, IRenderedComponent<Ride> Cut)> RenderProgramAsync(bool connected)
+    {
+        var ctx = new AppTestContext();
+        if (connected)
+            await ctx.Ftms.Treadmill.ConnectAsync();
+        ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("ride?program=blue-pools-nz");
+        var cut = ctx.Render<Ride>();
+        cut.WaitForAssertion(() => Assert.HasCount(1, ctx.Video.Loads));
+        return (ctx, cut);
+    }
+
+    [TestMethod]
+    public async Task Without_treadmill_the_video_plays_alone()
+    {
+        var (ctx, cut) = await RenderProgramAsync(connected: false);
+        using var _ = ctx;
+
+        StringAssert.Contains(cut.Markup, "Tapis non connecté");
+        Assert.IsFalse(cut.FindAll("button").Any(b => b.TextContent.Trim() == "STOP"));
+    }
+
+    [TestMethod]
+    public async Task Connected_treadmill_follows_the_video()
+    {
+        var (ctx, cut) = await RenderProgramAsync(connected: true);
+        using var _ = ctx;
+        ctx.Ftms.Writes.Clear();
+
+        ctx.Video.CurrentTime = 45; // Blue Pools: 3.0 km/h, 3 % from 0:40 to 0:50
+        await cut.InvokeAsync(() => ctx.Video.SetState(VideoState.Playing));
+
+        cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Consigne : 3,0 km/h, 3 %"));
+        StringAssert.Contains(cut.Markup, "Synchro active");
+        StringAssert.Contains(cut.Markup, "prochain changement dans 0:05");
+        CollectionAssert.AreEqual(new byte[] { 0x07 }, ctx.Ftms.Writes[0]);
+    }
+
+    [TestMethod]
+    public async Task Stop_button_halts_and_sync_can_be_resumed()
+    {
+        var (ctx, cut) = await RenderProgramAsync(connected: true);
+        using var _ = ctx;
+        ctx.Video.CurrentTime = 45;
+        await cut.InvokeAsync(() => ctx.Video.SetState(VideoState.Playing));
+
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "STOP").Click();
+
+        cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Arrêt demandé."));
+        CollectionAssert.AreEqual(new byte[] { 0x08, 0x01 }, ctx.Ftms.Writes[^1]);
+        Assert.AreEqual(VideoState.Paused, ctx.Video.State);
+
+        cut.FindAll("button").Single(b => b.TextContent.Contains("Relancer la synchro")).Click();
+        cut.WaitForAssertion(() => StringAssert.DoesNotMatch(cut.Markup, new System.Text.RegularExpressions.Regex("Arrêt demandé")));
+    }
+
+    [TestMethod]
+    public async Task Connection_loss_during_the_ride_is_shown()
+    {
+        var (ctx, cut) = await RenderProgramAsync(connected: true);
+        using var _ = ctx;
+
+        await cut.InvokeAsync(ctx.Ftms.Treadmill.OnDisconnected);
+
+        cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Connexion au tapis perdue"));
+        Assert.IsFalse(cut.FindAll("button").Any(b => b.TextContent.Contains("Relancer la synchro")));
+    }
 }
