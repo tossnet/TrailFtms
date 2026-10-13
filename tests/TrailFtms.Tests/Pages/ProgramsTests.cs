@@ -22,7 +22,8 @@ public sealed class ProgramsTests
         var cut = ctx.Render<TrailFtms.Pages.Programs>();
 
         cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Blue Pools, Nouvelle-Zélande"));
-        StringAssert.Contains(cut.Markup, "10 points, durée 51:52, par tossnet");
+        var points = WwwrootHttpHandler.ShippedProgram("blue-pools-nz").Segments.Count;
+        StringAssert.Contains(cut.Markup, $"{points} points, durée 51:52, par tossnet");
         StringAssert.Contains(cut.Markup, "(fourni)");
     }
 
