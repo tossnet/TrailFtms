@@ -311,7 +311,9 @@ public sealed class RideEngine : IAsyncDisposable
 
     private void OnTreadmillStateChanged()
     {
-        if (_treadmill.State != TreadmillState.Connected)
+        if (_treadmill.State == TreadmillState.Disconnected)
+            Halt(HaltReason.StoppedByUser); // "Disconnect" button
+        else if (_treadmill.State != TreadmillState.Connected)
             Halt(HaltReason.ConnectionLost);
     }
 

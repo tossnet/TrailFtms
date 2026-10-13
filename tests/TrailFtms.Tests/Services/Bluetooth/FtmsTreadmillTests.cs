@@ -161,6 +161,28 @@ public sealed class FtmsTreadmillTests
     }
 
     [TestMethod]
+    public async Task Disconnect_stops_the_belt_first()
+    {
+        var js = await ConnectedAsync();
+
+        await js.Treadmill.DisconnectAsync();
+
+        CollectionAssert.AreEqual(Hex("08 01"), js.Writes.Single());
+        Assert.AreEqual(TreadmillState.Disconnected, js.Treadmill.State);
+    }
+
+    [TestMethod]
+    public async Task Disconnect_still_happens_when_the_stop_gets_no_answer()
+    {
+        var js = await ConnectedAsync();
+        js.Respond = _ => null;
+
+        await js.Treadmill.DisconnectAsync();
+
+        Assert.AreEqual(TreadmillState.Disconnected, js.Treadmill.State);
+    }
+
+    [TestMethod]
     public async Task User_disconnection_is_not_a_connection_loss()
     {
         var js = await ConnectedAsync();
