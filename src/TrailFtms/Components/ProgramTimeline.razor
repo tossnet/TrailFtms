@@ -1,25 +1,38 @@
-@* Incline profile of the whole route, with the current position. A tap on a segment seeks to its start. *@
+@* Incline profile of the route with the current position. With a Window, only that many seconds are shown
+   and the view scrolls with the video (cursor near the left, so the coming terrain is visible).
+   A tap on a segment seeks to its start. *@
 
-<svg class="timeline" viewBox="0 0 @Width @Height" preserveAspectRatio="none" role="img" aria-label="@AriaLabel">
-    <path class="area" d="@_area" />
-    <path class="line" d="@_line" />
-    @foreach (var hit in _hits)
+<div class="timeline-box">
+    <svg class="timeline" viewBox="0 0 @Width @Height" preserveAspectRatio="none" role="img" aria-label="@AriaLabel">
+        <path class="area" d="@_area" />
+        <path class="line" d="@_line" />
+        @foreach (var hit in _hits)
+        {
+            <rect class="hit" x="@F(hit.X)" y="0" width="@F(hit.W)" height="@Height" @onclick="() => OnSeek.InvokeAsync(hit.T)" />
+        }
+        <line class="cursor" x1="@F(CursorX)" y1="0" x2="@F(CursorX)" y2="@Height" />
+    </svg>
+    @if (_windowed)
     {
-        <rect class="hit" x="@F(hit.X)" y="0" width="@F(hit.W)" height="@Height" @onclick="() => OnSeek.InvokeAsync(hit.T)" />
+        <span class="edge start">@Formatting.Time(_start)</span>
+        <span class="edge end">@Formatting.Time(_start + _span)</span>
     }
-    <line class="cursor" x1="@F(CursorX)" y1="0" x2="@F(CursorX)" y2="@Height" />
-</svg>
+</div>
 
 @code {
     private const double Width = 1000;
     private const double Height = 100;
     private const double Padding = 6;
+    private const double CursorRatio = 0.2; // position of the cursor in a scrolling window
 
     private string _area = "";
     private string _line = "";
     private List<(double X, double W, double T)> _hits = [];
     private RideProgram? _drawnProgram;
-    private double _drawnDuration;
+    private double _drawnTotal;
+    private double _start;
+    private double _span = 1;
+    private bool _windowed;
 
     [Parameter, EditorRequired]
     public RideProgram Program { get; set; } = null!;
@@ -32,6 +45,10 @@
     [Parameter]
     public double Position { get; set; }
 
+    /// <summary>Seconds shown at once. Null, or longer than the route: the whole route.</summary>
+    [Parameter]
+    public double? Window { get; set; }
+
     [Parameter]
     public EventCallback<double> OnSeek { get; set; }
 
@@ -40,16 +57,29 @@
 
     private double Total => Duration > 0 ? Duration : (Program.Segments.Count > 0 ? Program.Segments[^1].T + 60 : 60);
 
-    private double CursorX => Math.Clamp(Position / Total, 0, 1) * Width;
+    private double CursorX => Math.Clamp((Position - _start) / _span, 0, 1) * Width;
 
-    // The path only depends on the program and the duration: rebuild it only when they change.
+    // The path depends on the program, the duration and the visible range: rebuild only when they change
+    // (the window start moves by whole seconds).
     protected override void OnParametersSet()
     {
-        if (ReferenceEquals(Program, _drawnProgram) && Total == _drawnDuration)
+        var total = Total;
+        var windowed = Window is > 0 && Window < total;
+        var span = windowed ? Window!.Value : total;
+        var start = windowed ? Math.Clamp(Math.Floor(Position - span * CursorRatio), 0, total - span) : 0;
+        if (ReferenceEquals(Program, _drawnProgram) && total == _drawnTotal && start == _start && span == _span)
             return;
-        _drawnProgram = Program;
-        _drawnDuration = Total;
 
+        _drawnProgram = Program;
+        _drawnTotal = total;
+        _windowed = windowed;
+        _start = start;
+        _span = span;
+        Draw();
+    }
+
+    private void Draw()
+    {
         var segments = Program.Segments;
         if (segments.Count == 0)
         {
@@ -58,21 +88,22 @@
             return;
         }
 
+        // Vertical scale of the whole route: it does not jump while the window scrolls.
         var low = Math.Min(0, segments.Min(s => s.Incline));
         var high = Math.Max(1, segments.Max(s => s.Incline));
-        double X(double t) => Math.Clamp(t / Total, 0, 1) * Width;
+        double X(double t) => Math.Clamp((t - _start) / _span, 0, 1) * Width;
         double Y(double incline) => Height - Padding - (incline - low) / (high - low) * (Height - 2 * Padding);
 
-        // Step chart: each segment is flat until the next one.
-        var line = new System.Text.StringBuilder($"M0,{F(Y(segments[0].Incline))}");
-        _hits = new List<(double, double, double)>(segments.Count);
-        for (var i = 0; i < segments.Count; i++)
+        // Step chart: each segment is flat until the next one. Start with the one in force at the window start.
+        var first = Math.Max(0, Program.SegmentIndexAt(_start));
+        var line = new System.Text.StringBuilder($"M0,{F(Y(segments[first].Incline))}");
+        _hits = [];
+        for (var i = first; i < segments.Count && segments[i].T < _start + _span; i++)
         {
-            var start = X(segments[i].T);
-            var end = i + 1 < segments.Count ? X(segments[i + 1].T) : Width;
-            var y = F(Y(segments[i].Incline));
-            line.Append($" V{y} H{F(end)}");
-            _hits.Add((start, Math.Max(end - start, 0), segments[i].T));
+            var from = X(segments[i].T);
+            var to = i + 1 < segments.Count ? X(segments[i + 1].T) : Width;
+            line.Append($" V{F(Y(segments[i].Incline))} H{F(to)}");
+            _hits.Add((from, Math.Max(to - from, 0), segments[i].T));
         }
         _line = line.ToString();
         _area = $"{_line} V{F(Height)} H0 Z";
