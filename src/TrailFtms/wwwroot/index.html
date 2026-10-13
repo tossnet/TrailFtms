@@ -28,7 +28,12 @@
         <a href="." class="reload">Recharger</a>
         <span class="dismiss">🗙</span>
     </div>
-    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js" autostart="false"></script>
+    <script>
+        // French by default. Declared at startup so that Blazor loads the matching ICU data
+        // (changing the culture later from C# is rejected without loading all globalization data).
+        Blazor.start({ applicationCulture: "fr-FR" });
+    </script>
 </body>
 
 </html>
