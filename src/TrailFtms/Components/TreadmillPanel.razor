@@ -1,0 +1,127 @@
+@implements IDisposable
+@inject IFtmsTreadmill Treadmill
+@inject IStringLocalizer<Strings> L
+
+<div class="panel wo-col wo-gap-16">
+    <div class="metrics">
+        <div class="metric">
+            <span class="metric-label">@L["Speed"]</span>
+            <span class="metric-value">@Format(_data?.SpeedKmh, "0.0") <small>km/h</small></span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">@L["Incline"]</span>
+            <span class="metric-value">@Format(_data?.InclinePercent, "0.#") <small>%</small></span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">@L["Distance"]</span>
+            <span class="metric-value">@(_data?.TotalDistanceMeters?.ToString() ?? "-") <small>m</small></span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">@L["Time"]</span>
+            <span class="metric-value">@(_data?.ElapsedTime?.ToString(@"h\:mm\:ss") ?? "-")</span>
+        </div>
+    </div>
+
+    <div class="control">
+        <span class="control-label">@L["Target"] @L["Speed"]</span>
+        <WinOldButton OnClick="() => ChangeSpeedAsync(-0.5)">@Delta(-0.5)</WinOldButton>
+        <WinOldButton OnClick="() => ChangeSpeedAsync(-0.1)">@Delta(-0.1)</WinOldButton>
+        <span class="target">@_targetSpeed.ToString("0.0") km/h</span>
+        <WinOldButton OnClick="() => ChangeSpeedAsync(0.1)">@Delta(0.1)</WinOldButton>
+        <WinOldButton OnClick="() => ChangeSpeedAsync(0.5)">@Delta(0.5)</WinOldButton>
+    </div>
+
+    <div class="control">
+        <span class="control-label">@L["Target"] @L["Incline"]</span>
+        <WinOldButton OnClick="() => ChangeInclineAsync(-InclineStep)">@Delta(-InclineStep)</WinOldButton>
+        <span class="target">@_targetIncline.ToString("0.#") %</span>
+        <WinOldButton OnClick="() => ChangeInclineAsync(InclineStep)">@Delta(InclineStep)</WinOldButton>
+    </div>
+
+    <div class="actions">
+        <WinOldButton OnClick="() => RunAsync(Treadmill.StartAsync)">@L["Start"]</WinOldButton>
+        <WinOldButton OnClick="() => RunAsync(() => Treadmill.StopAsync(StopKind.Pause))">@L["Pause"]</WinOldButton>
+        <WinOldButton Class="stop" OnClick="() => RunAsync(() => Treadmill.StopAsync(StopKind.Stop))">@L["Stop"]</WinOldButton>
+    </div>
+
+    @if (_message is not null)
+    {
+        <WinOldInfoBar Icon="Icon.Alert" Message="@_message" Closable="true" OnClose="() => _message = null" />
+    }
+</div>
+
+@code {
+    private TreadmillData? _data;
+    private double _targetSpeed;
+    private double _targetIncline;
+    private string? _message;
+
+    private double InclineStep => Treadmill.InclineRange?.Step is > 0 and var step ? step : 1.0;
+
+    protected override void OnInitialized()
+    {
+        _data = Treadmill.LastData;
+        _targetSpeed = _data?.SpeedKmh is > 0 and var speed ? speed : Treadmill.SpeedRange?.Min ?? 1.0;
+        _targetIncline = _data?.InclinePercent ?? 0;
+        Treadmill.DataReceived += OnDataReceived;
+        Treadmill.StatusReceived += OnStatusReceived;
+    }
+
+    private Task ChangeSpeedAsync(double delta)
+    {
+        _targetSpeed = Treadmill.SpeedRange?.Clamp(_targetSpeed + delta) ?? Math.Max(0, Math.Round(_targetSpeed + delta, 2));
+        return RunAsync(() => Treadmill.SetSpeedAsync(_targetSpeed));
+    }
+
+    private Task ChangeInclineAsync(double delta)
+    {
+        _targetIncline = Treadmill.InclineRange?.Clamp(_targetIncline + delta) ?? Math.Round(_targetIncline + delta, 1);
+        return RunAsync(() => Treadmill.SetInclineAsync(_targetIncline));
+    }
+
+    private async Task RunAsync(Func<Task<ControlPointResult>> command)
+    {
+        _message = null;
+        try
+        {
+            var result = await command();
+            if (result != ControlPointResult.Success)
+                _message = L["CommandRejected", L[$"Result_{result}"]];
+        }
+        catch (TimeoutException)
+        {
+            _message = L["NoResponse"];
+        }
+        catch (InvalidOperationException)
+        {
+            // Connection lost: the Home page shows the alert.
+        }
+    }
+
+    private void OnDataReceived(TreadmillData data)
+    {
+        _data = data;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnStatusReceived(MachineStatus status)
+    {
+        _message = status switch
+        {
+            MachineStatus.StoppedBySafetyKey => L["SafetyKeyRemoved"],
+            MachineStatus.StoppedOrPausedByUser => L["StoppedFromConsole"],
+            _ => _message,
+        };
+        InvokeAsync(StateHasChanged);
+    }
+
+    private static string Format(double? value, string format) => value?.ToString(format) ?? "-";
+
+    private static string Delta(double value) => value.ToString("+0.0#;-0.0#");
+
+    public void Dispose()
+    {
+        Treadmill.DataReceived -= OnDataReceived;
+        Treadmill.StatusReceived -= OnStatusReceived;
+    }
+}

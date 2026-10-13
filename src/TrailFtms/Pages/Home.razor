@@ -1,8 +1,109 @@
 @page "/"
+@implements IDisposable
+@inject IFtmsTreadmill Treadmill
+@inject IStringLocalizer<Strings> L
 
 <PageTitle>TrailFtms</PageTitle>
 
-<div class="home">
-    <WinOldHeading Level="1">TrailFtms</WinOldHeading>
-    <WinOldLabel>Pilote ton tapis de course FTMS au rythme d'une vidéo YouTube.</WinOldLabel>
+<div class="home wo-col wo-gap-16">
+    <div>
+        <WinOldHeading Level="1">TrailFtms</WinOldHeading>
+        <WinOldLabel>@L["AppTagline"]</WinOldLabel>
+    </div>
+
+    <WinOldFrame Label="@L["Treadmill"]">
+        <div class="wo-col wo-gap-8">
+            @switch (_availability)
+            {
+                case BluetoothAvailability.Unsupported:
+                    <WinOldInfoBar Icon="Icon.Critical" Closable="false" Message="@L["BluetoothUnsupported"]" />
+                    break;
+                case BluetoothAvailability.Unavailable:
+                    <WinOldInfoBar Icon="Icon.Alert" Closable="false" Message="@L["BluetoothUnavailable"]" />
+                    break;
+            }
+
+            @if (Treadmill.State == TreadmillState.ConnectionLost)
+            {
+                <WinOldInfoBar Icon="Icon.Critical" Closable="false" Title="@L["ConnectionLostTitle"]" Message="@L["ConnectionLostMessage"]" />
+            }
+
+            @if (_error is not null)
+            {
+                <WinOldInfoBar Icon="Icon.Alert" Message="@_error" Closable="true" OnClose="() => _error = null" />
+            }
+
+            <div class="wo-row wo-gap-8 connection">
+                @if (Treadmill.State == TreadmillState.Connected)
+                {
+                    <WinOldLabel>@L["ConnectedTo", Treadmill.DeviceName ?? ""]</WinOldLabel>
+                    <WinOldButton OnClick="Treadmill.DisconnectAsync">@L["Disconnect"]</WinOldButton>
+                }
+                else
+                {
+                    <WinOldLabel>@L["NotConnected"]</WinOldLabel>
+                    <WinOldButton Default="true" OnClick="ConnectAsync" Disabled="@(!CanConnect)">@ConnectLabel</WinOldButton>
+                }
+            </div>
+
+            @if (Treadmill.State == TreadmillState.Connected)
+            {
+                @if (Treadmill.SpeedRange is { } speed)
+                {
+                    <WinOldLabel>@L["SpeedRange", speed.Min, speed.Max, speed.Step]</WinOldLabel>
+                }
+                @if (Treadmill.InclineRange is { } incline)
+                {
+                    <WinOldLabel>@L["InclineRange", incline.Min, incline.Max, incline.Step]</WinOldLabel>
+                }
+                @if (Treadmill.SpeedRange is null && Treadmill.InclineRange is null)
+                {
+                    <WinOldLabel>@L["RangeUnknown"]</WinOldLabel>
+                }
+            }
+        </div>
+    </WinOldFrame>
+
+    @if (Treadmill.State == TreadmillState.Connected)
+    {
+        <TreadmillPanel />
+    }
 </div>
+
+@code {
+    private BluetoothAvailability? _availability;
+    private string? _error;
+
+    private bool CanConnect =>
+        _availability == BluetoothAvailability.Available && Treadmill.State != TreadmillState.Connecting;
+
+    private string ConnectLabel => Treadmill.State switch
+    {
+        TreadmillState.Connecting => L["Connecting"],
+        TreadmillState.ConnectionLost => L["Reconnect"],
+        _ => L["Connect"],
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Treadmill.StateChanged += OnStateChanged;
+        _availability = await Treadmill.GetAvailabilityAsync();
+    }
+
+    private async Task ConnectAsync()
+    {
+        _error = null;
+        try
+        {
+            await Treadmill.ConnectAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = L["ConnectError", ex.Message];
+        }
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Treadmill.StateChanged -= OnStateChanged;
+}

@@ -58,6 +58,12 @@ public static class FtmsProtocol
         return new ControlPointResponse((ControlPointOpCode)data[1], (ControlPointResult)data[2]);
     }
 
+    // ---- Fitness Machine Status (0x2ADA) ----
+
+    /// <summary>Decodes the status op code. Parameters (new targets, stop kind) are ignored.</summary>
+    public static MachineStatus? ParseMachineStatus(ReadOnlySpan<byte> data) =>
+        data.IsEmpty ? null : (MachineStatus)data[0];
+
     // ---- Machine capabilities ----
 
     /// <summary>Decodes Fitness Machine Feature (0x2ACC): two uint32 bit fields.</summary>

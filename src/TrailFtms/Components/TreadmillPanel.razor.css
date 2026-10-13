@@ -1,0 +1,50 @@
+.metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: var(--tf-gap);
+}
+
+.metric {
+    display: flex;
+    flex-direction: column;
+}
+
+.metric-label {
+    font-size: 0.9rem;
+    opacity: 0.7;
+}
+
+.metric-value {
+    font-size: 2.2rem;
+    font-variant-numeric: tabular-nums;
+}
+
+    .metric-value small {
+        font-size: 1rem;
+    }
+
+.control, .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.control-label {
+    min-width: 10rem;
+}
+
+.target {
+    min-width: 6rem;
+    text-align: center;
+    font-size: 1.4rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.actions ::deep .stop {
+    min-width: 10rem;
+    font-weight: bold;
+    color: #fff;
+    background: #c42b1c;
+    border-color: #a11d12;
+}
