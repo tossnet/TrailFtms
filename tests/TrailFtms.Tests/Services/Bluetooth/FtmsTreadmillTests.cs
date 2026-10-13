@@ -183,6 +183,18 @@ public sealed class FtmsTreadmillTests
     }
 
     [TestMethod]
+    public async Task Disconnect_after_a_connection_loss_clears_it()
+    {
+        var js = await ConnectedAsync();
+        js.Treadmill.OnDisconnected();
+
+        await js.Treadmill.DisconnectAsync();
+
+        Assert.AreEqual(TreadmillState.Disconnected, js.Treadmill.State);
+        Assert.IsEmpty(js.Writes); // no stop sent: the link was already gone
+    }
+
+    [TestMethod]
     public async Task User_disconnection_is_not_a_connection_loss()
     {
         var js = await ConnectedAsync();

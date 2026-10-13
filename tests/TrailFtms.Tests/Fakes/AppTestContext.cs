@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TrailFtms.Services.Bluetooth;
 using TrailFtms.Services.Programs;
 using TrailFtms.Services.Settings;
+using TrailFtms.Services.Storage;
 using TrailFtms.Services.Video;
 
 namespace TrailFtms.Tests.Fakes;
@@ -13,6 +14,7 @@ public sealed class AppTestContext : BunitContext
 {
     public FakeFtmsJs Ftms { get; } = new();
     public FakeVideoPlayer Video { get; } = new();
+    public FakeBrowserStorage Storage { get; } = new();
 
     public AppTestContext()
     {
@@ -22,6 +24,7 @@ public sealed class AppTestContext : BunitContext
         Services.AddSingleton<IFtmsTreadmill>(Ftms.Treadmill);
         Services.AddSingleton<IVideoPlayer>(Video);
         Services.AddSingleton(WwwrootHttpHandler.CreateClient());
+        Services.AddSingleton<IBrowserStorage>(Storage);
         Services.AddSingleton<ProgramStore>();
         Services.AddSingleton<SettingsStore>();
     }

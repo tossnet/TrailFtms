@@ -1,14 +1,14 @@
 using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.JSInterop;
+using TrailFtms.Services.Storage;
 
 namespace TrailFtms.Services.Programs;
 
 /// <summary>
 /// Programs shipped with the app (wwwroot/programs, listed in index.json) plus the ones imported
-/// by the user, kept in localStorage. An imported program replaces a shipped one with the same id.
+/// by the user, kept in the browser storage. An imported program replaces a shipped one with the same id.
 /// </summary>
-public sealed class ProgramStore(HttpClient http, IJSRuntime js)
+public sealed class ProgramStore(HttpClient http, IBrowserStorage storage)
 {
     private const string IndexPath = "programs/index.json";
     private const string StorageKey = "trailftms.programs";
@@ -53,7 +53,7 @@ public sealed class ProgramStore(HttpClient http, IJSRuntime js)
         var texts = await Task.WhenAll(files.Select(f => http.GetStringAsync($"programs/{f}")));
         _embedded.AddRange(texts.Select(t => ProgramParser.Parse(t).Program).OfType<RideProgram>());
 
-        var stored = await js.InvokeAsync<string?>("localStorage.getItem", StorageKey);
+        var stored = await storage.GetAsync(StorageKey);
         if (stored is null)
             return;
         try
@@ -70,7 +70,6 @@ public sealed class ProgramStore(HttpClient http, IJSRuntime js)
     private ValueTask SaveImportedAsync()
     {
         var items = _imported.Select(ProgramParser.Serialize).ToArray();
-        return js.InvokeVoidAsync("localStorage.setItem", StorageKey,
-            JsonSerializer.Serialize(items, ProgramJsonContext.Default.StringArray));
+        return storage.SetAsync(StorageKey, JsonSerializer.Serialize(items, ProgramJsonContext.Default.StringArray));
     }
 }

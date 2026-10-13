@@ -44,6 +44,10 @@
                 {
                     <WinOldLabel>@L["NotConnected"]</WinOldLabel>
                     <WinOldButton Default="true" OnClick="ConnectAsync" Disabled="@(!CanConnect)">@ConnectLabel</WinOldButton>
+                    @if (Treadmill.State == TreadmillState.ConnectionLost)
+                    {
+                        <WinOldButton OnClick="Treadmill.DisconnectAsync">@L["Disconnect"]</WinOldButton>
+                    }
                 }
             </div>
 

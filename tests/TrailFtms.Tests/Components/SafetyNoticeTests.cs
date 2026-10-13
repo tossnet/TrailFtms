@@ -34,6 +34,7 @@ public sealed class SafetyNoticeTests
         Assert.AreEqual(Icon.Alert, box.Icon);
         Assert.IsTrue(box.TouchMode);
         Assert.IsTrue(ctx.Services.GetRequiredService<SettingsStore>().SafetyAccepted);
+        Assert.AreEqual("true", ctx.Storage.Items["trailftms.safety-accepted"]);
     }
 
     [TestMethod]
@@ -54,7 +55,7 @@ public sealed class SafetyNoticeTests
     {
         var (ctx, dialogs) = Create();
         using var _ = ctx;
-        ctx.JSInterop.Setup<string?>("localStorage.getItem", "trailftms.safety-accepted").SetResult("true");
+        ctx.Storage.Items["trailftms.safety-accepted"] = "true";
 
         ctx.Render<SafetyNotice>();
 
