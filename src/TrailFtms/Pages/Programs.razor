@@ -11,7 +11,8 @@
 <div class="home wo-col wo-gap-16">
     <WinOldHeading Level="1">@L["Programs"]</WinOldHeading>
 
-    <div class="import">
+    <div class="import wo-row wo-gap-8">
+        <WinOldButton Default="true" OnClick="@(() => Navigation.NavigateTo("editor"))">@L["NewProgram"]</WinOldButton>
         <WinOldButton OnClick="OpenPickerAsync">@L["Import"]</WinOldButton>
         <InputFile @ref="_input" OnChange="ImportAsync" accept=".json,application/json" />
     </div>
@@ -22,12 +23,7 @@
                        Closable="true" OnClose="ClearMessage">
             @if (_errors.Count > 0)
             {
-                <ul class="errors">
-                    @foreach (var error in _errors)
-                    {
-                        <li>@error</li>
-                    }
-                </ul>
+                <ProgramErrorList Errors="_errors" />
             }
         </WinOldInfoBar>
     }
@@ -55,6 +51,7 @@
                 </WinOldLabel>
                 <div class="actions">
                     <WinOldButton Default="true" OnClick="@(() => Navigation.NavigateTo($"ride?program={program.Id}"))">@L["Ride"]</WinOldButton>
+                    <WinOldButton OnClick="@(() => Navigation.NavigateTo($"editor?program={program.Id}"))">@L["Edit"]</WinOldButton>
                     <WinOldButton OnClick="@(() => ExportAsync(program))">@L["Export"]</WinOldButton>
                     @if (Store.IsImported(program.Id))
                     {
@@ -72,7 +69,7 @@
     private bool _loaded;
     private string? _loadError;
     private string? _message;
-    private List<string> _errors = [];
+    private IReadOnlyList<ProgramError> _errors = [];
     private InputFile? _input;
     private IJSObjectReference? _files;
 
@@ -109,9 +106,7 @@
         }
 
         _message = L["ImportFailed", file.Name];
-        _errors = result.Errors
-            .Select(error => (string)L[$"ProgramError_{error.Kind}", Formatting.Time(error.Time ?? 0)])
-            .ToList();
+        _errors = result.Errors;
     }
 
     private async Task OpenPickerAsync()

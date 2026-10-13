@@ -1,0 +1,319 @@
+@page "/editor"
+@implements IAsyncDisposable
+@inject IVideoPlayer Player
+@inject ProgramStore Store
+@inject IDialogService Dialogs
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject IStringLocalizer<Strings> L
+
+<PageTitle>@Heading - TrailFtms</PageTitle>
+
+<div class="home editor">
+    <WinOldHeading Level="1">@Heading</WinOldHeading>
+
+    <div class="editor-grid">
+        <section class="editor-video wo-col wo-gap-8">
+            <div class="wo-row wo-gap-8 link">
+                <WinOldTextBox Label="@L["VideoLink"]" @bind-Value="_link" />
+                <WinOldButton OnClick="LoadVideo">@L["Load"]</WinOldButton>
+            </div>
+
+            @if (_draft.YoutubeId.Length > 0)
+            {
+                <VideoPlayer VideoId="@_draft.YoutubeId" />
+            }
+            @if (_draft.Segments.Count > 0)
+            {
+                <div class="profile">
+                    <ProgramTimeline Program="_preview" Duration="_draft.DurationSeconds" Position="_position"
+                                     OnSeek="Player.SeekAsync" AriaLabel="@L["InclineProfile"]" />
+                </div>
+            }
+
+            <div class="add-point">
+                <span class="position">@L["AtPosition", Formatting.Time(_position)]</span>
+                <WinOldNumberBox TValue="double" Label="@L["SpeedKmh"]" Min="0" Max="30" Step="0.1" @bind-Value="_speed" />
+                <WinOldNumberBox TValue="double" Label="@L["InclinePercent"]" Min="-10" Max="30" Step="1" @bind-Value="_incline" />
+                <WinOldButton Default="true" Disabled="_draft.YoutubeId.Length == 0" OnClick="AddPointAsync">@L["AddPointHere"]</WinOldButton>
+            </div>
+        </section>
+
+        <section class="editor-side wo-col wo-gap-16">
+            <WinOldFrame Label="@L["ProgramInfo"]">
+                <div class="wo-col wo-gap-8">
+                    <WinOldTextBox Label="@L["Title"]" Value="@_draft.Title" ValueChanged="SetTitle" />
+                    <WinOldTextBox Label="@L["ProgramId"]" Value="@_draft.Id" ValueChanged="SetId" />
+                    <WinOldTextBox Label="@L["Author"]" Value="@_draft.Author" ValueChanged="v => { _draft.Author = v; Touch(); }" />
+                    <WinOldLabel>@L["Duration", Formatting.Time(_draft.DurationSeconds)]</WinOldLabel>
+                </div>
+            </WinOldFrame>
+
+            <WinOldFrame Label="@L["Points", _draft.Segments.Count]">
+                @if (_draft.Segments.Count == 0)
+                {
+                    <WinOldLabel>@L["NoPoints"]</WinOldLabel>
+                }
+                else
+                {
+                    <div class="points">
+                        @for (var i = 0; i < _draft.Segments.Count; i++)
+                        {
+                            var index = i;
+                            var segment = _draft.Segments[i];
+                            <div class="point @(index == ActiveIndex ? "active" : null)" @key="segment.T">
+                                <WinOldButton Class="time" OnClick="() => Player.SeekAsync(segment.T)">@Formatting.Time(segment.T)</WinOldButton>
+                                <WinOldNumberBox TValue="double" Min="0" Max="30" Step="0.1" Value="segment.Speed"
+                                                 ValueChanged="v => UpdatePoint(index, v, segment.Incline)" />
+                                <span class="unit">km/h</span>
+                                <WinOldNumberBox TValue="double" Min="-10" Max="30" Step="1" Value="segment.Incline"
+                                                 ValueChanged="v => UpdatePoint(index, segment.Speed, v)" />
+                                <span class="unit">%</span>
+                                <WinOldButton OnClick="() => RemovePoint(index)">@L["Remove"]</WinOldButton>
+                            </div>
+                        }
+                    </div>
+                }
+            </WinOldFrame>
+
+            @if (_message is not null)
+            {
+                <WinOldInfoBar Icon="@(_errors.Count == 0 ? Icon.Information : Icon.Alert)" Message="@_message"
+                               Closable="true" OnClose="() => { _message = null; _errors = []; }">
+                    @if (_errors.Count > 0)
+                    {
+                        <ProgramErrorList Errors="_errors" />
+                    }
+                </WinOldInfoBar>
+            }
+
+            <div class="actions">
+                <WinOldButton Default="true" OnClick="SaveAsync">@L["Save"]</WinOldButton>
+                <WinOldButton OnClick="ExportAsync">@L["Export"]</WinOldButton>
+                @if (_savedId is not null && !_dirty)
+                {
+                    <WinOldButton OnClick="@(() => Navigation.NavigateTo($"ride?program={_savedId}"))">@L["Ride"]</WinOldButton>
+                }
+                <WinOldButton OnClick="BackAsync">@L["Back"]</WinOldButton>
+            </div>
+        </section>
+    </div>
+</div>
+
+@code {
+    private static readonly TimeSpan RefreshInterval = TimeSpan.FromMilliseconds(250);
+
+    private ProgramDraft _draft = new();
+    private RideProgram _preview = new();
+    private string? _link;
+    private double _position;
+    private double _speed = 3.0;
+    private double _incline;
+    private bool _idEdited;
+    private bool _dirty;
+    private string? _savedId;
+    private string? _message;
+    private IReadOnlyList<ProgramError> _errors = [];
+    private IJSObjectReference? _ui;
+    private IJSObjectReference? _files;
+    private readonly CancellationTokenSource _cts = new();
+
+    /// <summary>Program to edit, e.g. /editor?program=blue-pools-nz. Empty: new program.</summary>
+    [SupplyParameterFromQuery(Name = "program")]
+    public string? ProgramId { get; set; }
+
+    private string Heading => ProgramId is null ? L["NewProgram"] : L["EditProgram"];
+
+    private int ActiveIndex
+    {
+        get
+        {
+            var index = -1;
+            for (var i = 0; i < _draft.Segments.Count && _draft.Segments[i].T <= _position; i++)
+                index = i;
+            return index;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ = RefreshPositionAsync(_cts.Token);
+        if (ProgramId is null)
+            return;
+
+        await Store.LoadAsync();
+        if (Store.Find(ProgramId) is { } program)
+        {
+            _draft = ProgramDraft.From(program);
+            _link = program.YoutubeId;
+            _idEdited = true;
+            _savedId = program.Id;
+            RefreshPreview();
+        }
+        else
+        {
+            _message = L["ProgramNotFound"];
+        }
+    }
+
+    private void LoadVideo()
+    {
+        var id = YouTubeUrl.ParseVideoId(_link);
+        if (id is null)
+        {
+            _message = L["InvalidVideoLink"];
+            _errors = [];
+            return;
+        }
+        if (id == _draft.YoutubeId)
+            return;
+
+        _draft.YoutubeId = id;
+        _draft.DurationSeconds = 0; // read again from the new video
+        Touch();
+    }
+
+    private void SetTitle(string title)
+    {
+        _draft.Title = title;
+        if (!_idEdited)
+            _draft.Id = ProgramDraft.Slugify(title);
+        Touch();
+    }
+
+    private void SetId(string id)
+    {
+        _draft.Id = id;
+        _idEdited = id.Length > 0;
+        Touch();
+    }
+
+    private async Task AddPointAsync()
+    {
+        var time = await Player.GetCurrentTimeAsync();
+        _draft.SetPoint(time, _speed, _incline);
+        Touch();
+    }
+
+    private void UpdatePoint(int index, double speed, double incline)
+    {
+        _draft.Update(index, speed, incline);
+        Touch();
+    }
+
+    private void RemovePoint(int index)
+    {
+        _draft.Remove(index);
+        Touch();
+    }
+
+    private async Task SaveAsync()
+    {
+        var result = await Store.ImportAsync(ProgramParser.Serialize(_draft.ToProgram()));
+        _errors = result.Errors;
+        if (result.Program is not { } program)
+        {
+            _message = L["InvalidProgram"];
+            return;
+        }
+
+        _message = L["ProgramSaved"];
+        _savedId = program.Id;
+        await SetDirtyAsync(false);
+        Navigation.NavigateTo($"editor?program={program.Id}", replace: true);
+    }
+
+    private async Task ExportAsync()
+    {
+        var program = _draft.ToProgram();
+        var name = program.Id.Length > 0 ? program.Id : "program";
+        await (await FilesAsync()).InvokeVoidAsync("downloadText", $"{name}.json", ProgramParser.Serialize(program));
+    }
+
+    private async Task BackAsync()
+    {
+        if (_dirty)
+        {
+            var leave = await Dialogs.ShowMessageBox(new MessageBoxOptions
+            {
+                Appearance = Appearance.Win10,
+                TouchMode = true,
+                Icon = Icon.Question,
+                Title = L["UnsavedTitle"],
+                Message = L["UnsavedMessage"],
+                OkButtonText = L["Leave"],
+                CancelButtonText = L["Cancel"],
+            });
+            if (leave != true)
+                return;
+            await SetDirtyAsync(false);
+        }
+        Navigation.NavigateTo("programs");
+    }
+
+    private void Touch()
+    {
+        RefreshPreview();
+        _ = SetDirtyAsync(true);
+    }
+
+    private void RefreshPreview() => _preview = _draft.ToProgram();
+
+    private async Task SetDirtyAsync(bool dirty)
+    {
+        if (_dirty == dirty)
+            return;
+        _dirty = dirty;
+        await (await UiAsync()).InvokeVoidAsync("setLeaveWarning", dirty);
+    }
+
+    private async ValueTask<IJSObjectReference> UiAsync() =>
+        _ui ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/ui.js");
+
+    private async ValueTask<IJSObjectReference> FilesAsync() =>
+        _files ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/files.js");
+
+    private async Task RefreshPositionAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(RefreshInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                if (Player.State is VideoState.NotLoaded)
+                    continue;
+
+                _position = await Player.GetCurrentTimeAsync();
+                if (_draft.DurationSeconds == 0 && await Player.GetDurationAsync() is > 0 and var duration)
+                {
+                    _draft.DurationSeconds = (int)Math.Floor(duration);
+                    RefreshPreview();
+                }
+                StateHasChanged();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Page left.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+        try
+        {
+            if (_ui is not null)
+            {
+                await _ui.InvokeVoidAsync("setLeaveWarning", false);
+                await _ui.DisposeAsync();
+            }
+            if (_files is not null)
+                await _files.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+}

@@ -1,4 +1,3 @@
-using Bunit;
 using TrailFtms.Services.Bluetooth;
 using TrailFtms.Services.Ride;
 using TrailFtms.Services.Settings;
@@ -9,21 +8,20 @@ namespace TrailFtms.Tests.Services.Settings;
 [TestClass]
 public sealed class SettingsStoreTests
 {
-    private static (BunitContext Ctx, FakeFtmsJs Ftms, SettingsStore Store) Create(string? settings = null, string? safety = null)
+    private const string SettingsKey = "trailftms.settings";
+    private const string SafetyKey = "trailftms.safety-accepted";
+
+    private static (FakeBrowserStorage Storage, FakeFtmsJs Ftms, SettingsStore Store) Create()
     {
-        var ctx = new BunitContext();
-        ctx.JSInterop.Setup<string?>("localStorage.getItem", "trailftms.settings").SetResult(settings);
-        ctx.JSInterop.Setup<string?>("localStorage.getItem", "trailftms.safety-accepted").SetResult(safety);
-        ctx.JSInterop.SetupVoid("localStorage.setItem", _ => true).SetVoidResult();
+        var storage = new FakeBrowserStorage();
         var ftms = new FakeFtmsJs();
-        return (ctx, ftms, new SettingsStore(ctx.JSInterop.JSRuntime, ftms.Treadmill));
+        return (storage, ftms, new SettingsStore(storage, ftms.Treadmill));
     }
 
     [TestMethod]
     public async Task Defaults_when_nothing_is_stored()
     {
-        var (ctx, ftms, store) = Create();
-        using var _ = ctx;
+        var (_, ftms, store) = Create();
 
         await store.LoadAsync();
 
@@ -35,9 +33,9 @@ public sealed class SettingsStoreTests
     [TestMethod]
     public async Task Stored_settings_are_restored_and_limits_applied()
     {
-        var json = """{"ride":{"speedFactor":0.9,"pauseBehavior":"PauseTreadmill","pauseSpeed":2.5},"maxSpeed":8,"maxIncline":6}""";
-        var (ctx, ftms, store) = Create(json, "true");
-        using var _ = ctx;
+        var (storage, ftms, store) = Create();
+        storage.Items[SettingsKey] = """{"ride":{"speedFactor":0.9,"pauseBehavior":"PauseTreadmill","pauseSpeed":2.5},"maxSpeed":8,"maxIncline":6}""";
+        storage.Items[SafetyKey] = "true";
 
         await store.LoadAsync();
 
@@ -50,8 +48,8 @@ public sealed class SettingsStoreTests
     [TestMethod]
     public async Task Corrupted_settings_fall_back_to_defaults()
     {
-        var (ctx, _, store) = Create("{oops");
-        using var __ = ctx;
+        var (storage, _, store) = Create();
+        storage.Items[SettingsKey] = "{oops";
 
         await store.LoadAsync();
 
@@ -61,8 +59,7 @@ public sealed class SettingsStoreTests
     [TestMethod]
     public async Task Save_persists_applies_limits_and_notifies()
     {
-        var (ctx, ftms, store) = Create();
-        using var _ = ctx;
+        var (storage, ftms, store) = Create();
         await store.LoadAsync();
         var changes = 0;
         store.Changed += () => changes++;
@@ -71,22 +68,18 @@ public sealed class SettingsStoreTests
 
         Assert.AreEqual(7.5, ftms.Treadmill.Limits.MaxSpeed);
         Assert.AreEqual(1, changes);
-        var saved = ctx.JSInterop.VerifyInvoke("localStorage.setItem");
-        Assert.AreEqual("trailftms.settings", saved.Arguments[0]);
-        StringAssert.Contains((string)saved.Arguments[1]!, "\"maxSpeed\":7.5");
-        StringAssert.Contains((string)saved.Arguments[1]!, "\"pauseBehavior\":\"SlowDown\"");
+        StringAssert.Contains(storage.Items[SettingsKey], "\"maxSpeed\":7.5");
+        StringAssert.Contains(storage.Items[SettingsKey], "\"pauseBehavior\":\"SlowDown\"");
     }
 
     [TestMethod]
     public async Task Accepting_safety_is_remembered()
     {
-        var (ctx, _, store) = Create();
-        using var __ = ctx;
+        var (storage, _, store) = Create();
 
         await store.AcceptSafetyAsync();
 
         Assert.IsTrue(store.SafetyAccepted);
-        var saved = ctx.JSInterop.VerifyInvoke("localStorage.setItem");
-        Assert.AreEqual("trailftms.safety-accepted", saved.Arguments[0]);
+        Assert.AreEqual("true", storage.Items[SafetyKey]);
     }
 }

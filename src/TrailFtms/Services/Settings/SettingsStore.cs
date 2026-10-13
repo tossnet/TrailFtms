@@ -1,13 +1,13 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.JSInterop;
 using TrailFtms.Services.Bluetooth;
 using TrailFtms.Services.Ride;
+using TrailFtms.Services.Storage;
 
 namespace TrailFtms.Services.Settings;
 
-/// <summary>Loads and saves <see cref="AppSettings"/> in localStorage and applies the ceilings to the treadmill.</summary>
-public sealed class SettingsStore(IJSRuntime js, IFtmsTreadmill treadmill)
+/// <summary>Loads and saves <see cref="AppSettings"/> in the browser storage and applies the ceilings to the treadmill.</summary>
+public sealed class SettingsStore(IBrowserStorage storage, IFtmsTreadmill treadmill)
 {
     private const string SettingsKey = "trailftms.settings";
     private const string SafetyKey = "trailftms.safety-accepted";
@@ -26,23 +26,22 @@ public sealed class SettingsStore(IJSRuntime js, IFtmsTreadmill treadmill)
     public async Task SaveAsync(AppSettings settings)
     {
         Apply(settings);
-        await js.InvokeVoidAsync("localStorage.setItem", SettingsKey,
-            JsonSerializer.Serialize(settings, SettingsJsonContext.Default.AppSettings));
+        await storage.SetAsync(SettingsKey, JsonSerializer.Serialize(settings, SettingsJsonContext.Default.AppSettings));
         Changed?.Invoke();
     }
 
     public async Task AcceptSafetyAsync()
     {
         SafetyAccepted = true;
-        await js.InvokeVoidAsync("localStorage.setItem", SafetyKey, "true");
+        await storage.SetAsync(SafetyKey, "true");
         Changed?.Invoke();
     }
 
     private async Task LoadCoreAsync()
     {
-        SafetyAccepted = await js.InvokeAsync<string?>("localStorage.getItem", SafetyKey) == "true";
+        SafetyAccepted = await storage.GetAsync(SafetyKey) == "true";
 
-        var stored = await js.InvokeAsync<string?>("localStorage.getItem", SettingsKey);
+        var stored = await storage.GetAsync(SettingsKey);
         var settings = new AppSettings();
         if (stored is not null)
         {

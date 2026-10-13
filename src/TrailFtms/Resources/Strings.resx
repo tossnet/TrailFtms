@@ -378,4 +378,67 @@
   <data name="ConnectHint" xml:space="preserve">
     <value>Vérifie que le tapis est allumé et qu'il n'est pas déjà connecté à un autre appareil (téléphone, autre onglet), puis réessaie.</value>
   </data>
+  <data name="NewProgram" xml:space="preserve">
+    <value>Nouveau programme</value>
+  </data>
+  <data name="EditProgram" xml:space="preserve">
+    <value>Modifier le programme</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Modifier</value>
+  </data>
+  <data name="ProgramInfo" xml:space="preserve">
+    <value>Informations</value>
+  </data>
+  <data name="Title" xml:space="preserve">
+    <value>Titre</value>
+  </data>
+  <data name="ProgramId" xml:space="preserve">
+    <value>Identifiant</value>
+  </data>
+  <data name="Author" xml:space="preserve">
+    <value>Auteur</value>
+  </data>
+  <data name="Duration" xml:space="preserve">
+    <value>Durée de la vidéo : {0}</value>
+  </data>
+  <data name="Points" xml:space="preserve">
+    <value>Points ({0})</value>
+  </data>
+  <data name="NoPoints" xml:space="preserve">
+    <value>Aucun point : lance la vidéo et ajoute un point à chaque changement de pente ou d'allure.</value>
+  </data>
+  <data name="AddPointHere" xml:space="preserve">
+    <value>Ajouter un point ici</value>
+  </data>
+  <data name="AtPosition" xml:space="preserve">
+    <value>Position {0}</value>
+  </data>
+  <data name="SpeedKmh" xml:space="preserve">
+    <value>Vitesse (km/h)</value>
+  </data>
+  <data name="InclinePercent" xml:space="preserve">
+    <value>Inclinaison (%)</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="ProgramSaved" xml:space="preserve">
+    <value>Programme enregistré dans ce navigateur. Exporte-le pour le partager.</value>
+  </data>
+  <data name="InvalidProgram" xml:space="preserve">
+    <value>Le programme n'est pas valide :</value>
+  </data>
+  <data name="UnsavedTitle" xml:space="preserve">
+    <value>Modifications non enregistrées</value>
+  </data>
+  <data name="UnsavedMessage" xml:space="preserve">
+    <value>Des modifications ne sont pas enregistrées. Quitter quand même ?</value>
+  </data>
+  <data name="Leave" xml:space="preserve">
+    <value>Quitter</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
 </root>

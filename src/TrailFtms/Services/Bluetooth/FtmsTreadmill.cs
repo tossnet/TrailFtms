@@ -104,8 +104,10 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
 
         _disconnectRequested = true;
         await _module.InvokeVoidAsync("disconnect");
-        // The browser also raises gattserverdisconnected, OnDisconnected is idempotent.
-        OnDisconnected();
+        // Also after a lost connection: the user acknowledged it, back to "not connected".
+        // The browser event that follows finds Disconnected and is ignored.
+        _pending?.TrySetException(new InvalidOperationException("Treadmill disconnected."));
+        SetState(TreadmillState.Disconnected);
     }
 
     public Task<ControlPointResult> RequestControlAsync() => SendAsync(FtmsProtocol.RequestControl());
