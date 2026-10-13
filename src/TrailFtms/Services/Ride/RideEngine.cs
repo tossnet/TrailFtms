@@ -140,7 +140,12 @@ public sealed class RideEngine : IAsyncDisposable
 
             switch (_video.State)
             {
-                case VideoState.Playing or VideoState.Buffering:
+                case VideoState.Playing:
+                    await FollowVideoAsync(Program);
+                    break;
+                // Buffering in the middle of the ride: keep following (targets do not change while the
+                // time is frozen). Before the first start or after a pause, wait until the video really plays.
+                case VideoState.Buffering when _beltStarted && !_pauseApplied:
                     await FollowVideoAsync(Program);
                     break;
                 case VideoState.Paused:
