@@ -206,6 +206,37 @@ public sealed class FtmsTreadmillTests
     }
 
     [TestMethod]
+    public async Task Measurements_split_over_several_notifications_are_merged()
+    {
+        var js = await ConnectedAsync();
+        var speeds = new List<double?>();
+        js.Treadmill.DataReceived += d => speeds.Add(d.SpeedKmh);
+
+        js.Treadmill.OnTreadmillData(Hex("08 00 F4 01 14 00 00 00"));             // speed 5.00 + incline 2 %
+        js.Treadmill.OnTreadmillData(Hex("05 04 2C 01 00 3C 00"));                // More Data: distance 300 m, time 60 s
+        js.Treadmill.OnTreadmillData(Hex("08 00 FE 01 14 00 00 00"));             // speed 5.10
+
+        CollectionAssert.AreEqual(new double?[] { 5.0, 5.0, 5.1 }, speeds); // never "no speed" in between
+        var data = js.Treadmill.LastData!;
+        Assert.AreEqual(2.0, data.InclinePercent!.Value, 1e-9);
+        Assert.AreEqual(300, data.TotalDistanceMeters);
+        Assert.AreEqual(TimeSpan.FromSeconds(60), data.ElapsedTime);
+    }
+
+    [TestMethod]
+    public async Task Measurements_restart_empty_after_a_new_connection()
+    {
+        var js = await ConnectedAsync();
+        js.Treadmill.OnTreadmillData(Hex("00 00 F4 01"));
+        await js.Treadmill.DisconnectAsync();
+
+        await js.Treadmill.ConnectAsync();
+        js.Treadmill.OnTreadmillData(Hex("05 04 2C 01 00 3C 00"));
+
+        Assert.IsNull(js.Treadmill.LastData!.SpeedKmh);
+    }
+
+    [TestMethod]
     public async Task Notifications_are_decoded_and_raised()
     {
         var js = await ConnectedAsync();

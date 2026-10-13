@@ -24,7 +24,7 @@
     @if (_program is not null)
     {
         <div class="ride-profile">
-            <ProgramTimeline Program="_program" Duration="ProfileDuration" Position="_position"
+            <ProgramTimeline Program="_program" Duration="ProfileDuration" Position="_position" Window="ProfileWindow"
                              OnSeek="SeekAsync" AriaLabel="@L["InclineProfile"]" />
         </div>
     }
@@ -81,14 +81,6 @@
                     <span class="target">@L["Target"] @incline.ToString("0.#")</span>
                 }
             </div>
-            <div class="metric">
-                <span class="label">@L["Distance"]</span>
-                <span class="value">@Distance(_data?.TotalDistanceMeters)</span>
-            </div>
-            <div class="metric">
-                <span class="label">@L["Time"]</span>
-                <span class="value">@Formatting.Time(_data?.ElapsedTime?.TotalSeconds ?? _position)</span>
-            </div>
             @if (_engine.IsActive)
             {
                 <div class="metric next">
@@ -105,16 +97,6 @@
                 </div>
             }
         </div>
-
-        @if (_program is not null)
-        {
-            <div class="pace">
-                <span class="label">@L["Pace"]</span>
-                <WinOldButton OnClick="() => ChangePaceAsync(-5)">-5 %</WinOldButton>
-                <span class="pace-value">@Math.Round(Factor * 100) %</span>
-                <WinOldButton OnClick="() => ChangePaceAsync(5)">+5 %</WinOldButton>
-            </div>
-        }
 
         <div class="tools">
             <WinOldButton OnClick="ToggleFullscreenAsync"><BiIcon Name="BiIconName.ArrowsFullscreen" /> @L["Fullscreen"]</WinOldButton>
@@ -133,6 +115,10 @@
 
 @code {
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromMilliseconds(250);
+
+    // Long videos (often 30 to 50 min): the profile shows 5 min around the position and scrolls with it.
+    private const double ScrollingProfileFrom = 10 * 60;
+    private const double ProfileWindowSeconds = 5 * 60;
 
     private RideEngine _engine = null!;
     private RideProgram? _program;
@@ -159,6 +145,8 @@
     private double Factor => _engine.Settings.SpeedFactor;
 
     private double ProfileDuration => _program?.DurationSeconds is > 0 and var d ? d : _duration;
+
+    private double? ProfileWindow => ProfileDuration > ScrollingProfileFrom ? ProfileWindowSeconds : null;
 
     private ProgramSegment? NextSegment =>
         _program is not null && _engine.SegmentIndex >= 0 && _engine.SegmentIndex + 1 < _program.Segments.Count
@@ -228,13 +216,6 @@
 
     private Task SeekAsync(double seconds) => Player.SeekAsync(seconds);
 
-    private Task ChangePaceAsync(int deltaPercent)
-    {
-        var current = Settings.Current;
-        var percent = Math.Clamp((int)Math.Round(current.Ride.SpeedFactor * 100) + deltaPercent, 50, 150);
-        return Settings.SaveAsync(current with { Ride = current.Ride with { SpeedFactor = percent / 100.0 } });
-    }
-
     private async Task ToggleFullscreenAsync()
     {
         _ui ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/ui.js");
@@ -289,13 +270,6 @@
     }
 
     private static string Number(double? value, string format) => value?.ToString(format) ?? "-";
-
-    private static string Distance(int? meters) => meters switch
-    {
-        null => "-",
-        < 1000 => $"{meters} m",
-        _ => $"{meters / 1000.0:0.00} km",
-    };
 
     public async ValueTask DisposeAsync()
     {

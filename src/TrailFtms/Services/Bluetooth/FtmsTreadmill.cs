@@ -141,9 +141,10 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
     [JSInvokable]
     public void OnTreadmillData(byte[] frame)
     {
-        if (FtmsProtocol.ParseTreadmillData(frame) is not { } data)
+        if (FtmsProtocol.ParseTreadmillData(frame) is not { } update)
             return;
 
+        var data = LastData?.UpdatedWith(update) ?? update;
         LastData = data;
         DataReceived?.Invoke(data);
     }

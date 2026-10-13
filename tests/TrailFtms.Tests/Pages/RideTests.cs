@@ -175,7 +175,21 @@ public sealed class RideTests
     }
 
     [TestMethod]
-    public async Task Pace_buttons_change_the_speed_factor_live()
+    public async Task Panel_only_shows_speed_incline_and_next_change()
+    {
+        var (ctx, cut) = await RenderProgramAsync(connected: true);
+        using var _ = ctx;
+        ctx.Video.CurrentTime = 45;
+        await cut.InvokeAsync(() => ctx.Video.SetState(VideoState.Playing));
+
+        cut.WaitForAssertion(() => Assert.HasCount(3, cut.FindAll(".metric")));
+        CollectionAssert.AreEqual(new[] { "Vitesse", "Inclinaison", "Ensuite" },
+            cut.FindAll(".metric .label").Select(l => l.TextContent).ToArray());
+        Assert.IsEmpty(cut.FindAll(".pace-value"));
+    }
+
+    [TestMethod]
+    public async Task Speed_factor_from_settings_applies_during_the_ride()
     {
         var (ctx, cut) = await RenderProgramAsync(connected: true);
         using var _ = ctx;
@@ -183,14 +197,27 @@ public sealed class RideTests
         await cut.InvokeAsync(() => ctx.Video.SetState(VideoState.Playing));
         cut.WaitForAssertion(() => Assert.AreEqual("Consigne 3,0", cut.FindAll(".target")[0].TextContent));
 
-        cut.FindAll("button").Single(b => b.TextContent.Trim() == "+5 %").Click();
-        cut.FindAll("button").Single(b => b.TextContent.Trim() == "+5 %").Click();
-
-        Assert.AreEqual("110 %", cut.Find(".pace-value").TextContent.Trim());
-        Assert.AreEqual(1.1, ctx.Services.GetRequiredService<TrailFtms.Services.Settings.SettingsStore>().Current.Ride.SpeedFactor, 1e-9);
+        var settings = ctx.Services.GetRequiredService<TrailFtms.Services.Settings.SettingsStore>();
+        await cut.InvokeAsync(() => settings.SaveAsync(settings.Current with { Ride = settings.Current.Ride with { SpeedFactor = 1.1 } }));
         ctx.Time.Advance(TimeSpan.FromMilliseconds(250)); // next engine tick applies the new factor
 
         cut.WaitForAssertion(() => Assert.AreEqual("Consigne 3,3", cut.FindAll(".target")[0].TextContent));
+    }
+
+    [TestMethod]
+    public async Task Long_video_profile_scrolls_with_the_position()
+    {
+        var (ctx, cut) = await RenderProgramAsync(connected: false); // Blue Pools: 51:52
+        using var _ = ctx;
+        ctx.Video.SetState(VideoState.Playing);
+
+        ctx.Video.CurrentTime = 45;
+        ctx.Time.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => CollectionAssert.AreEqual(new[] { "0:00", "5:00" }, cut.FindAll(".edge").Select(e => e.TextContent).ToArray()));
+
+        ctx.Video.CurrentTime = 20 * 60;
+        ctx.Time.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => CollectionAssert.AreEqual(new[] { "19:00", "24:00" }, cut.FindAll(".edge").Select(e => e.TextContent).ToArray()));
     }
 
     [TestMethod]

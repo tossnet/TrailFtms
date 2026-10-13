@@ -8,8 +8,9 @@ namespace TrailFtms.Services.Bluetooth;
 /// </summary>
 public static class FtmsProtocol
 {
-    private const double SpeedResolution = 0.01;      // km/h
-    private const double InclinationResolution = 0.1; // %
+    // Raw units per km/h (0.01 km/h) and per % (0.1 %). Dividing by these keeps decoded values exact (510 / 100 = 5.1).
+    private const double SpeedScale = 100;
+    private const double InclinationScale = 10;
 
     // ---- Control Point commands (0x2AD9) ----
 
@@ -24,7 +25,7 @@ public static class FtmsProtocol
     /// <summary>Set Target Speed, <paramref name="kmh"/> encoded as uint16 in 0.01 km/h.</summary>
     public static byte[] SetTargetSpeed(double kmh)
     {
-        var raw = Math.Round(kmh / SpeedResolution);
+        var raw = Math.Round(kmh * SpeedScale);
         ArgumentOutOfRangeException.ThrowIfLessThan(raw, ushort.MinValue, nameof(kmh));
         ArgumentOutOfRangeException.ThrowIfGreaterThan(raw, ushort.MaxValue, nameof(kmh));
 
@@ -37,7 +38,7 @@ public static class FtmsProtocol
     /// <summary>Set Target Inclination, <paramref name="percent"/> encoded as sint16 in 0.1 %.</summary>
     public static byte[] SetTargetInclination(double percent)
     {
-        var raw = Math.Round(percent / InclinationResolution);
+        var raw = Math.Round(percent * InclinationScale);
         ArgumentOutOfRangeException.ThrowIfLessThan(raw, short.MinValue, nameof(percent));
         ArgumentOutOfRangeException.ThrowIfGreaterThan(raw, short.MaxValue, nameof(percent));
 
@@ -84,9 +85,9 @@ public static class FtmsProtocol
             return null;
 
         return new SupportedRange(
-            BinaryPrimitives.ReadUInt16LittleEndian(data) * SpeedResolution,
-            BinaryPrimitives.ReadUInt16LittleEndian(data[2..]) * SpeedResolution,
-            BinaryPrimitives.ReadUInt16LittleEndian(data[4..]) * SpeedResolution);
+            BinaryPrimitives.ReadUInt16LittleEndian(data) / SpeedScale,
+            BinaryPrimitives.ReadUInt16LittleEndian(data[2..]) / SpeedScale,
+            BinaryPrimitives.ReadUInt16LittleEndian(data[4..]) / SpeedScale);
     }
 
     /// <summary>Decodes Supported Inclination Range (0x2AD5): min, max as sint16 and step as uint16, in 0.1 %.</summary>
@@ -96,9 +97,9 @@ public static class FtmsProtocol
             return null;
 
         return new SupportedRange(
-            BinaryPrimitives.ReadInt16LittleEndian(data) * InclinationResolution,
-            BinaryPrimitives.ReadInt16LittleEndian(data[2..]) * InclinationResolution,
-            BinaryPrimitives.ReadUInt16LittleEndian(data[4..]) * InclinationResolution);
+            BinaryPrimitives.ReadInt16LittleEndian(data) / InclinationScale,
+            BinaryPrimitives.ReadInt16LittleEndian(data[2..]) / InclinationScale,
+            BinaryPrimitives.ReadUInt16LittleEndian(data[4..]) / InclinationScale);
     }
 
     // ---- Treadmill Data (0x2ACD) ----
@@ -146,12 +147,12 @@ public static class FtmsProtocol
 
         if (!flags.HasFlag(TreadmillFlags.MoreData))
         {
-            speed = BinaryPrimitives.ReadUInt16LittleEndian(p) * SpeedResolution;
+            speed = BinaryPrimitives.ReadUInt16LittleEndian(p) / SpeedScale;
             p = p[2..];
         }
         if (flags.HasFlag(TreadmillFlags.AverageSpeed))
         {
-            averageSpeed = BinaryPrimitives.ReadUInt16LittleEndian(p) * SpeedResolution;
+            averageSpeed = BinaryPrimitives.ReadUInt16LittleEndian(p) / SpeedScale;
             p = p[2..];
         }
         if (flags.HasFlag(TreadmillFlags.TotalDistance))
@@ -163,7 +164,7 @@ public static class FtmsProtocol
         {
             var raw = BinaryPrimitives.ReadInt16LittleEndian(p);
             if (raw != InclinationNotAvailable)
-                incline = raw * InclinationResolution;
+                incline = raw / InclinationScale;
             p = p[4..]; // inclination + ramp angle (ignored)
         }
         if (flags.HasFlag(TreadmillFlags.ElevationGain))
