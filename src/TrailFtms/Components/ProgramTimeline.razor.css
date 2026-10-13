@@ -31,8 +31,38 @@
     background: var(--tf-profile-bg);
 }
 
-.area {
-    fill: var(--tf-profile-fill);
+.speed-0 { fill: var(--tf-speed-0); background: var(--tf-speed-0); }
+.speed-1 { fill: var(--tf-speed-1); background: var(--tf-speed-1); }
+.speed-2 { fill: var(--tf-speed-2); background: var(--tf-speed-2); }
+.speed-3 { fill: var(--tf-speed-3); background: var(--tf-speed-3); }
+
+/* Speed legend: the color never carries the meaning alone. */
+.legend {
+    position: absolute;
+    top: 0.15rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.6rem;
+    padding: 0 0.4rem;
+    font-size: 0.7rem;
+    color: var(--tf-muted);
+    background: var(--tf-profile-bg);
+    border-radius: 3px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.swatch {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 2px;
 }
 
 .line {
@@ -52,7 +82,7 @@
     }
 
 .cursor {
-    stroke: var(--tf-accent);
+    stroke: var(--tf-profile-cursor);
     stroke-width: 3;
     vector-effect: non-scaling-stroke;
 }

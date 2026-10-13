@@ -25,8 +25,8 @@ public sealed class ProgramTimelineTests
             .Add(c => c.Duration, 1000)
             .Add(c => c.Position, 500));
 
-        // Incline 0..10 mapped to y 94..6: 0 % at the bottom, 10 % at the top.
-        Assert.AreEqual("M0,94 V94 H250 V6 H500 V50 H1000", cut.Find("path.line").GetAttribute("d"));
+        // Incline 0..10 mapped to y 94..20: 0 % at the bottom, 10 % at the top (room above for the legend).
+        Assert.AreEqual("M0,94 V94 H250 V20 H500 V57 H1000", cut.Find("path.line").GetAttribute("d"));
         Assert.AreEqual("500", cut.Find("line.cursor").GetAttribute("x1"));
         Assert.HasCount(3, cut.FindAll("rect.hit"));
     }
@@ -58,7 +58,7 @@ public sealed class ProgramTimelineTests
             .Add(c => c.Position, 500));
 
         // Window 460..660 (cursor at 20 %): end of the 10 % segment, then 5 % from 500 (x = 200).
-        Assert.AreEqual("M0,6 V6 H200 V50 H1000", cut.Find("path.line").GetAttribute("d"));
+        Assert.AreEqual("M0,20 V20 H200 V57 H1000", cut.Find("path.line").GetAttribute("d"));
         Assert.AreEqual("200", cut.Find("line.cursor").GetAttribute("x1"));
         CollectionAssert.AreEqual(new[] { "7:40", "11:00" }, cut.FindAll(".edge").Select(e => e.TextContent).ToArray());
         Assert.HasCount(2, cut.FindAll("rect.hit"));
@@ -87,8 +87,24 @@ public sealed class ProgramTimelineTests
         var cut = ctx.Render<ProgramTimeline>(p => p
             .Add(c => c.Program, Program).Add(c => c.Duration, 1000).Add(c => c.Window, 5000));
 
-        Assert.AreEqual("M0,94 V94 H250 V6 H500 V50 H1000", cut.Find("path.line").GetAttribute("d"));
+        Assert.AreEqual("M0,94 V94 H250 V20 H500 V57 H1000", cut.Find("path.line").GetAttribute("d"));
         Assert.IsEmpty(cut.FindAll(".edge"));
+    }
+
+    [TestMethod]
+    public void Segments_are_colored_by_speed_band_with_legend_and_tooltip()
+    {
+        using var ctx = new BunitContext();
+        var program = Program with { Segments = [new(0, 3.9, 0), new(100, 4, 2), new(200, 7.9, 4), new(300, 8, 6)] };
+
+        var cut = ctx.Render<ProgramTimeline>(p => p.Add(c => c.Program, program).Add(c => c.Duration, 400));
+
+        CollectionAssert.AreEqual(
+            new[] { "fill speed-0", "fill speed-1", "fill speed-2", "fill speed-3" },
+            cut.FindAll("rect.fill").Select(r => r.ClassName).ToArray());
+        Assert.AreEqual("1:40 · 2 % · 4,0 km/h", cut.FindAll("rect.hit title")[1].TextContent);
+        CollectionAssert.AreEqual(new[] { "< 4", "4-6", "6-8", "8+ km/h" },
+            cut.FindAll(".legend-item").Select(i => i.TextContent).ToArray());
     }
 
     [TestMethod]
