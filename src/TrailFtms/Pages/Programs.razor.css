@@ -1,0 +1,22 @@
+.import ::deep input[type=file] {
+    display: none;
+}
+
+.program {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.errors {
+    margin: 0.25rem 0 0;
+    padding-left: 1.25rem;
+}

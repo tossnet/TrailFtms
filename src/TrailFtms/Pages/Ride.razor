@@ -1,18 +1,22 @@
 @page "/ride"
 @implements IDisposable
 @inject IVideoPlayer Player
+@inject ProgramStore Store
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Strings> L
 
-<PageTitle>@L["Video"] - TrailFtms</PageTitle>
+<PageTitle>@Title - TrailFtms</PageTitle>
 
 <div class="home wo-col wo-gap-16">
-    <WinOldHeading Level="1">@L["Video"]</WinOldHeading>
+    <WinOldHeading Level="1">@Title</WinOldHeading>
 
-    <div class="wo-row wo-gap-8 link">
-        <WinOldTextBox Label="@L["VideoLink"]" @bind-Value="_link" Class="link-input" />
-        <WinOldButton Default="true" OnClick="Load">@L["Load"]</WinOldButton>
-    </div>
+    @if (_program is null)
+    {
+        <div class="wo-row wo-gap-8 link">
+            <WinOldTextBox Label="@L["VideoLink"]" @bind-Value="_link" Class="link-input" />
+            <WinOldButton Default="true" OnClick="Load">@L["Load"]</WinOldButton>
+        </div>
+    }
 
     @if (_error is not null)
     {
@@ -23,7 +27,7 @@
     {
         <VideoPlayer VideoId="@_videoId" />
         <WinOldLabel>
-            @L[$"VideoState_{Player.State}"] - @L["Position"] : @FormatTime(_position) / @FormatTime(_duration)
+            @L[$"VideoState_{Player.State}"] - @L["Position"] : @Formatting.Time(_position) / @Formatting.Time(_duration)
         </WinOldLabel>
     }
 </div>
@@ -31,6 +35,7 @@
 @code {
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromMilliseconds(250);
 
+    private RideProgram? _program;
     private string? _link;
     private string? _videoId;
     private string? _error;
@@ -42,13 +47,31 @@
     [SupplyParameterFromQuery(Name = "v")]
     public string? V { get; set; }
 
-    protected override void OnInitialized()
+    /// <summary>Program id, e.g. /ride?program=blue-pools-nz.</summary>
+    [SupplyParameterFromQuery(Name = "program")]
+    public string? ProgramId { get; set; }
+
+    private string Title => _program?.Title ?? L["Video"];
+
+    protected override async Task OnInitializedAsync()
     {
         Player.StateChanged += OnPlayerChanged;
         Player.ErrorOccurred += OnPlayerError;
-        _link = V;
-        _videoId = YouTubeUrl.ParseVideoId(V);
         _ = RefreshPositionAsync(_cts.Token);
+
+        if (ProgramId is null)
+        {
+            _link = V;
+            _videoId = YouTubeUrl.ParseVideoId(V);
+            return;
+        }
+
+        await Store.LoadAsync();
+        _program = Store.Find(ProgramId);
+        if (_program is null)
+            _error = L["ProgramNotFound"];
+        else
+            _videoId = _program.YoutubeId;
     }
 
     private void Load()
@@ -93,8 +116,6 @@
         _error = L[$"VideoError_{error}"];
         InvokeAsync(StateHasChanged);
     }
-
-    private static string FormatTime(double seconds) => TimeSpan.FromSeconds(Math.Floor(seconds)).ToString(@"h\:mm\:ss");
 
     public void Dispose()
     {

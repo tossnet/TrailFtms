@@ -1,0 +1,19 @@
+{
+  "id": "blue-pools-nz",
+  "title": "Blue Pools, Nouvelle-Zélande",
+  "youtubeId": "KiEN4HxM4ic",
+  "author": "tossnet",
+  "durationSeconds": 3112,
+  "segments": [
+    { "t": 0,   "speed": 1.0, "incline": 0 },
+    { "t": 40,  "speed": 3.0, "incline": 3 },
+    { "t": 50,  "speed": 3.0, "incline": 1 },
+    { "t": 60,  "speed": 3.2, "incline": 0 },
+    { "t": 75,  "speed": 3.3, "incline": 2 },
+    { "t": 90,  "speed": 3.5, "incline": 0 },
+    { "t": 100, "speed": 3.5, "incline": 3 },
+    { "t": 110, "speed": 3.5, "incline": 2 },
+    { "t": 125, "speed": 3.5, "incline": 6 },
+    { "t": 135, "speed": 4.0, "incline": 1 }
+  ]
+}

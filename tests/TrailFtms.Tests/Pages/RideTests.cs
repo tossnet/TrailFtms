@@ -75,4 +75,29 @@ public sealed class RideTests
 
         Assert.AreEqual(VideoState.NotLoaded, ctx.Video.State);
     }
+
+    [TestMethod]
+    public void Program_from_query_string_loads_its_video()
+    {
+        using var ctx = new AppTestContext();
+        ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("ride?program=blue-pools-nz");
+
+        var cut = ctx.Render<Ride>();
+
+        cut.WaitForAssertion(() => CollectionAssert.AreEqual(new[] { "KiEN4HxM4ic" }, ctx.Video.Loads));
+        Assert.AreEqual("Blue Pools, Nouvelle-Zélande", cut.Find(".hd-1").TextContent);
+        Assert.IsEmpty(cut.FindAll("input"));
+    }
+
+    [TestMethod]
+    public void Unknown_program_shows_message()
+    {
+        using var ctx = new AppTestContext();
+        ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("ride?program=nope");
+
+        var cut = ctx.Render<Ride>();
+
+        cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Programme introuvable."));
+        Assert.IsEmpty(ctx.Video.Loads);
+    }
 }

@@ -2,6 +2,7 @@ using Blazor.WinOld;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using TrailFtms.Services.Bluetooth;
+using TrailFtms.Services.Programs;
 using TrailFtms.Services.Video;
 
 namespace TrailFtms.Tests.Fakes;
@@ -19,5 +20,7 @@ public sealed class AppTestContext : BunitContext
         Services.AddLocalization();
         Services.AddSingleton<IFtmsTreadmill>(Ftms.Treadmill);
         Services.AddSingleton<IVideoPlayer>(Video);
+        Services.AddSingleton(WwwrootHttpHandler.CreateClient());
+        Services.AddSingleton<ProgramStore>();
     }
 }
