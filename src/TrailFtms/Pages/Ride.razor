@@ -1,6 +1,7 @@
 @page "/ride"
-@implements IDisposable
+@implements IAsyncDisposable
 @inject IVideoPlayer Player
+@inject IFtmsTreadmill Treadmill
 @inject ProgramStore Store
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Strings> L
@@ -23,6 +24,29 @@
         <WinOldInfoBar Icon="Icon.Alert" Message="@_error" Closable="true" OnClose="() => _error = null" />
     }
 
+    @if (_program is not null)
+    {
+        @if (Treadmill.State != TreadmillState.Connected && _engine.Status is RideStatus.Idle)
+        {
+            <WinOldInfoBar Icon="Icon.Information" Closable="false" Message="@L["TreadmillNotConnected"]" />
+        }
+        @if (_engine.Status == RideStatus.Halted)
+        {
+            <WinOldInfoBar Icon="Icon.Critical" Closable="false" Message="@L[$"Halt_{_engine.HaltReason}"]">
+                <Actions>
+                    @if (Treadmill.State == TreadmillState.Connected)
+                    {
+                        <WinOldButton OnClick="ResumeSync">@L["ResumeSync"]</WinOldButton>
+                    }
+                </Actions>
+            </WinOldInfoBar>
+        }
+        @if (_warning is not null)
+        {
+            <WinOldInfoBar Icon="Icon.Alert" Message="@_warning" Closable="true" OnClose="() => _warning = null" />
+        }
+    }
+
     @if (_videoId is not null)
     {
         <VideoPlayer VideoId="@_videoId" />
@@ -30,15 +54,32 @@
             @L[$"VideoState_{Player.State}"] - @L["Position"] : @Formatting.Time(_position) / @Formatting.Time(_duration)
         </WinOldLabel>
     }
+
+    @if (_engine.Status != RideStatus.Idle)
+    {
+        <div class="sync">
+            <WinOldLabel>
+                <strong>@L[$"RideStatus_{_engine.Status}"]</strong>
+                @if (_engine.TargetSpeed is { } speed && _engine.TargetIncline is { } incline)
+                {
+                    <text> - @L["RideTargets", speed, incline]</text>
+                    <text>, @(_engine.NextChangeIn is { } next ? L["NextChange", Formatting.Time(Math.Ceiling(next))] : L["LastSegment"])</text>
+                }
+            </WinOldLabel>
+            <WinOldButton Class="stop" OnClick="_engine.StopAsync">@L["Stop"]</WinOldButton>
+        </div>
+    }
 </div>
 
 @code {
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromMilliseconds(250);
 
+    private RideEngine _engine = null!;
     private RideProgram? _program;
     private string? _link;
     private string? _videoId;
     private string? _error;
+    private string? _warning;
     private double _position;
     private double _duration;
     private readonly CancellationTokenSource _cts = new();
@@ -55,7 +96,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Player.StateChanged += OnPlayerChanged;
+        _engine = new RideEngine(Treadmill, Player);
+        _engine.Changed += OnChanged;
+        _engine.WarningRaised += OnWarning;
+        Player.StateChanged += OnChanged;
         Player.ErrorOccurred += OnPlayerError;
         _ = RefreshPositionAsync(_cts.Token);
 
@@ -69,9 +113,14 @@
         await Store.LoadAsync();
         _program = Store.Find(ProgramId);
         if (_program is null)
+        {
             _error = L["ProgramNotFound"];
-        else
-            _videoId = _program.YoutubeId;
+            return;
+        }
+
+        _videoId = _program.YoutubeId;
+        if (Treadmill.State == TreadmillState.Connected)
+            _engine.Start(_program);
     }
 
     private void Load()
@@ -86,6 +135,13 @@
 
         _videoId = id;
         Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("v", id), replace: true);
+    }
+
+    private void ResumeSync()
+    {
+        _warning = null;
+        if (_program is not null)
+            _engine.Start(_program);
     }
 
     private async Task RefreshPositionAsync(CancellationToken token)
@@ -109,7 +165,13 @@
         }
     }
 
-    private void OnPlayerChanged() => InvokeAsync(StateHasChanged);
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnWarning(RideWarning warning)
+    {
+        _warning = L[$"RideWarning_{warning}"];
+        InvokeAsync(StateHasChanged);
+    }
 
     private void OnPlayerError(VideoError error)
     {
@@ -117,11 +179,14 @@
         InvokeAsync(StateHasChanged);
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         _cts.Cancel();
         _cts.Dispose();
-        Player.StateChanged -= OnPlayerChanged;
+        Player.StateChanged -= OnChanged;
         Player.ErrorOccurred -= OnPlayerError;
+        _engine.Changed -= OnChanged;
+        _engine.WarningRaised -= OnWarning;
+        await _engine.DisposeAsync();
     }
 }

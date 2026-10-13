@@ -1,0 +1,15 @@
+.sync {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.sync ::deep .stop {
+    min-width: 10rem;
+    font-weight: bold;
+    color: #fff;
+    background: #c42b1c;
+    border-color: #a11d12;
+}

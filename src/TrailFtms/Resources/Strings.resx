@@ -246,4 +246,49 @@
   <data name="ProgramError_InclineOutOfRange" xml:space="preserve">
     <value>inclinaison hors limites à {0} (-10 à 30 %)</value>
   </data>
+  <data name="TreadmillNotConnected" xml:space="preserve">
+    <value>Tapis non connecté : la vidéo ne pilote pas le tapis. Connecte-le depuis l'accueil.</value>
+  </data>
+  <data name="RideStatus_Idle" xml:space="preserve">
+    <value>En attente</value>
+  </data>
+  <data name="RideStatus_Running" xml:space="preserve">
+    <value>Synchro active</value>
+  </data>
+  <data name="RideStatus_CoolingDown" xml:space="preserve">
+    <value>Retour au calme</value>
+  </data>
+  <data name="RideStatus_Finished" xml:space="preserve">
+    <value>Terminé</value>
+  </data>
+  <data name="RideStatus_Halted" xml:space="preserve">
+    <value>Synchro arrêtée</value>
+  </data>
+  <data name="Halt_StoppedByUser" xml:space="preserve">
+    <value>Arrêt demandé.</value>
+  </data>
+  <data name="Halt_StoppedFromTreadmill" xml:space="preserve">
+    <value>Le tapis a été arrêté depuis sa console ou par la clé de sécurité : la synchro est suspendue.</value>
+  </data>
+  <data name="Halt_ConnectionLost" xml:space="preserve">
+    <value>Connexion au tapis perdue : la synchro est arrêtée et aucune commande ne sera envoyée.</value>
+  </data>
+  <data name="RideWarning_CommandRejected" xml:space="preserve">
+    <value>Le tapis a refusé une consigne.</value>
+  </data>
+  <data name="RideWarning_NoResponse" xml:space="preserve">
+    <value>Le tapis n'a pas répondu à une consigne.</value>
+  </data>
+  <data name="RideTargets" xml:space="preserve">
+    <value>Consigne : {0:0.0} km/h, {1:0.#} %</value>
+  </data>
+  <data name="NextChange" xml:space="preserve">
+    <value>prochain changement dans {0}</value>
+  </data>
+  <data name="LastSegment" xml:space="preserve">
+    <value>dernier segment</value>
+  </data>
+  <data name="ResumeSync" xml:space="preserve">
+    <value>Relancer la synchro</value>
+  </data>
 </root>
