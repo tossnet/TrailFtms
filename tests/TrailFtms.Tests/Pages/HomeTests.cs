@@ -60,4 +60,17 @@ public sealed class HomeTests
         Assert.IsTrue(cut.FindAll("button").Any(b => b.TextContent.Contains("Reconnecter")));
         Assert.IsEmpty(cut.FindComponents<TreadmillPanel>());
     }
+
+    [TestMethod]
+    public void Connection_failure_shows_a_clean_message_and_a_hint()
+    {
+        using var ctx = new AppTestContext();
+        ctx.Ftms.DuringConnect = () => throw new Microsoft.JSInterop.JSException("Connection attempt failed.\nundefined");
+        var cut = ctx.Render<Home>();
+
+        cut.FindAll("button").Single(b => b.TextContent.Contains("Connecter le tapis")).Click();
+
+        cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Échec de la connexion : Connection attempt failed. Vérifie que le tapis"));
+        Assert.DoesNotContain("undefined", cut.Markup);
+    }
 }

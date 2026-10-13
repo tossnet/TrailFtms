@@ -26,6 +26,9 @@ public sealed class FakeFtmsJs : IJSRuntime, IJSObjectReference
 
     public List<byte[]> Writes { get; } = [];
 
+    /// <summary>Runs inside the "connect" call, e.g. to raise events a real connection would.</summary>
+    public Action? DuringConnect { get; set; }
+
     public FtmsTreadmill Treadmill { get; }
 
     public FakeFtmsJs() => Treadmill = new FtmsTreadmill(this) { ResponseTimeout = TimeSpan.FromMilliseconds(50) };
@@ -36,7 +39,7 @@ public sealed class FakeFtmsJs : IJSRuntime, IJSObjectReference
         {
             "import" => this,
             "getAvailability" => Availability,
-            "connect" => DeviceName,
+            "connect" => Connect(),
             "read" => Reads.GetValueOrDefault((ushort)args![0]!),
             "write" => Write((byte[])args![0]!),
             "disconnect" => null,
@@ -49,6 +52,12 @@ public sealed class FakeFtmsJs : IJSRuntime, IJSObjectReference
         InvokeAsync<TValue>(identifier, args);
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+    private string? Connect()
+    {
+        DuringConnect?.Invoke();
+        return DeviceName;
+    }
 
     private object? Write(byte[] command)
     {

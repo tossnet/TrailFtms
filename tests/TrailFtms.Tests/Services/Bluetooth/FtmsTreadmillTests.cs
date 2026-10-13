@@ -150,6 +150,17 @@ public sealed class FtmsTreadmillTests
     }
 
     [TestMethod]
+    public async Task Disconnection_of_a_failed_attempt_while_connecting_is_ignored()
+    {
+        var js = new FakeFtmsJs();
+        js.DuringConnect = js.Treadmill.OnDisconnected; // first GATT attempt dropped, ftms.js retries
+
+        Assert.IsTrue(await js.Treadmill.ConnectAsync());
+
+        Assert.AreEqual(TreadmillState.Connected, js.Treadmill.State);
+    }
+
+    [TestMethod]
     public async Task User_disconnection_is_not_a_connection_loss()
     {
         var js = await ConnectedAsync();

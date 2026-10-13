@@ -106,9 +106,12 @@
         }
         catch (Exception ex)
         {
-            _error = L["ConnectError", ex.Message];
+            _error = $"{L["ConnectError", ErrorText(ex)]} {L["ConnectHint"]}";
         }
     }
+
+    // JS errors come back as "message\nstack" (stack may be "undefined"): keep the message only.
+    private static string ErrorText(Exception ex) => ex.Message.Split('\n')[0].Trim();
 
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
 
