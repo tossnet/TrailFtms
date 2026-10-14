@@ -318,6 +318,12 @@
   <data name="SpeedFactorHelp" xml:space="preserve">
     <value>Appliqué à toutes les vitesses des programmes : 90 % pour ralentir, 110 % pour accélérer.</value>
   </data>
+  <data name="InclineSecondsPerStep" xml:space="preserve">
+    <value>Durée d'un cran d'inclinaison (s)</value>
+  </data>
+  <data name="InclineSecondsPerStepHelp" xml:space="preserve">
+    <value>Temps mis par le tapis pour monter ou descendre d'un cran. Les changements d'inclinaison sont envoyés en avance pour que la pente soit atteinte au bon moment dans la vidéo. 0 pour désactiver.</value>
+  </data>
   <data name="Limits" xml:space="preserve">
     <value>Limites de sécurité</value>
   </data>

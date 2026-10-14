@@ -21,6 +21,9 @@ public sealed class RideEngineTests
         Segments = [new(0, 1.0, 0), new(40, 3.0, 3), new(50, 3.0, 1), new(60, 3.2, 0)],
     };
 
+    /// <summary>Incline sent exactly at the segment time, so the tests below read like the program.</summary>
+    private static readonly RideSettings NoLead = new() { InclineSecondsPerStep = 0 };
+
     /// <summary>Connected treadmill on a fake JS module, fake video, engine with a frozen clock (ticks are manual).</summary>
     private sealed class Rig
     {
@@ -34,7 +37,7 @@ public sealed class RideEngineTests
             var rig = new Rig();
             await rig.Js.Treadmill.ConnectAsync();
             await rig.Video.LoadAsync(default, Program.YoutubeId);
-            rig.Engine = new RideEngine(rig.Js.Treadmill, rig.Video, new FakeTimeProvider()) { Settings = settings ?? new() };
+            rig.Engine = new RideEngine(rig.Js.Treadmill, rig.Video, new FakeTimeProvider()) { Settings = settings ?? NoLead };
             rig.Engine.WarningRaised += rig.Warnings.Add;
             rig.Engine.Start(Program);
             rig.Js.Writes.Clear();
@@ -179,7 +182,7 @@ public sealed class RideEngineTests
     [TestMethod]
     public async Task After_a_treadmill_pause_the_belt_restarts_only_when_the_video_plays()
     {
-        var rig = await Rig.StartAsync(new RideSettings { PauseBehavior = PauseBehavior.PauseTreadmill });
+        var rig = await Rig.StartAsync(NoLead with {PauseBehavior = PauseBehavior.PauseTreadmill });
         await rig.PlayAtAsync(45);
         rig.Video.SetState(VideoState.Paused);
         rig.TakeSent();
@@ -195,7 +198,7 @@ public sealed class RideEngineTests
     [TestMethod]
     public async Task After_a_slow_down_the_speed_comes_back_only_when_the_video_plays()
     {
-        var rig = await Rig.StartAsync(new RideSettings { PauseBehavior = PauseBehavior.SlowDown, PauseSpeed = 2.0 });
+        var rig = await Rig.StartAsync(NoLead with {PauseBehavior = PauseBehavior.SlowDown, PauseSpeed = 2.0 });
         await rig.PlayAtAsync(65);
         rig.Video.SetState(VideoState.Paused);
         rig.TakeSent();
@@ -224,7 +227,7 @@ public sealed class RideEngineTests
     [TestMethod]
     public async Task Speed_factor_is_applied_and_snapped_to_machine_step()
     {
-        var rig = await Rig.StartAsync(new RideSettings { SpeedFactor = 1.1 });
+        var rig = await Rig.StartAsync(NoLead with {SpeedFactor = 1.1 });
 
         await rig.PlayAtAsync(65); // 3.2 x 1.1 = 3.52
 
@@ -256,12 +259,80 @@ public sealed class RideEngineTests
         CollectionAssert.AreEqual(new[] { "start", "speed 2.5", "incline 2" }, rig.TakeSent());
     }
 
+    // ---- Incline anticipation ----
+
+    [TestMethod]
+    public async Task Incline_change_is_sent_early_by_the_travel_time()
+    {
+        var rig = await Rig.StartAsync(new RideSettings { InclineSecondsPerStep = 2.5 });
+        await rig.PlayAtAsync(0);
+        rig.TakeSent();
+
+        await rig.PlayAtAsync(32); // 0 -> 3 % at 40 s: 3 steps x 2.5 s = 7.5 s ahead
+        Assert.IsEmpty(rig.TakeSent());
+
+        await rig.PlayAtAsync(32.5);
+        CollectionAssert.AreEqual(new[] { "incline 3" }, rig.TakeSent());
+        Assert.AreEqual(0, rig.Engine.SegmentIndex, "speed and segment still follow the video time");
+        Assert.AreEqual(1.0, rig.Engine.TargetSpeed);
+
+        await rig.PlayAtAsync(40);
+        CollectionAssert.AreEqual(new[] { "speed 3" }, rig.TakeSent());
+    }
+
+    [TestMethod]
+    public async Task Small_incline_change_is_anticipated_less_than_a_big_one()
+    {
+        var rig = await Rig.StartAsync(new RideSettings { InclineSecondsPerStep = 2.5 });
+        await rig.PlayAtAsync(44);
+        rig.TakeSent();
+
+        await rig.PlayAtAsync(45); // 3 -> 1 % at 50 s: 2 steps = 5 s ahead
+        CollectionAssert.AreEqual(new[] { "incline 1" }, rig.TakeSent());
+
+        await rig.PlayAtAsync(57); // 1 -> 0 % at 60 s: 1 step = 2.5 s ahead
+        Assert.IsEmpty(rig.TakeSent());
+        await rig.PlayAtAsync(57.5);
+        CollectionAssert.AreEqual(new[] { "incline 0" }, rig.TakeSent());
+    }
+
+    [TestMethod]
+    public async Task Speed_only_changes_do_not_hide_the_next_incline_change()
+    {
+        var program = Program with
+        {
+            Segments = [new(0, 1.0, 0), new(10, 2.0, 0), new(12, 2.5, 0), new(20, 2.5, 2)],
+        };
+        var rig = await Rig.StartAsync(new RideSettings { InclineSecondsPerStep = 2.5 });
+        rig.Engine.Start(program);
+
+        await rig.PlayAtAsync(11); // 2 steps = 5 s before 20 s, two speed changes in between
+        Assert.AreEqual(0, rig.Engine.TargetIncline);
+
+        await rig.PlayAtAsync(15);
+        Assert.AreEqual(2, rig.Engine.TargetIncline);
+    }
+
+    [TestMethod]
+    public async Task Anticipation_uses_the_clamped_incline()
+    {
+        var rig = await Rig.StartAsync(new RideSettings { InclineSecondsPerStep = 2.5 });
+        rig.Js.Treadmill.Limits = new TreadmillLimits(MaxSpeed: null, MaxIncline: 1);
+        await rig.PlayAtAsync(0);
+        rig.TakeSent();
+
+        await rig.PlayAtAsync(37); // capped to 1 %: only 1 step, 2.5 s ahead
+        Assert.IsEmpty(rig.TakeSent());
+        await rig.PlayAtAsync(37.5);
+        CollectionAssert.AreEqual(new[] { "incline 1" }, rig.TakeSent());
+    }
+
     // ---- Pause ----
 
     [TestMethod]
     public async Task Pause_slows_down_then_resume_restores_the_program()
     {
-        var rig = await Rig.StartAsync(new RideSettings { PauseBehavior = PauseBehavior.SlowDown, PauseSpeed = 2.0 });
+        var rig = await Rig.StartAsync(NoLead with {PauseBehavior = PauseBehavior.SlowDown, PauseSpeed = 2.0 });
         await rig.PlayAtAsync(65);
         rig.TakeSent();
 
@@ -276,7 +347,7 @@ public sealed class RideEngineTests
     [TestMethod]
     public async Task Pause_never_speeds_up_the_belt()
     {
-        var rig = await Rig.StartAsync(new RideSettings { PauseBehavior = PauseBehavior.SlowDown, PauseSpeed = 3.0 });
+        var rig = await Rig.StartAsync(NoLead with {PauseBehavior = PauseBehavior.SlowDown, PauseSpeed = 3.0 });
         await rig.PlayAtAsync(0); // 1 km/h
         rig.TakeSent();
 
@@ -288,7 +359,7 @@ public sealed class RideEngineTests
     [TestMethod]
     public async Task Pause_can_pause_the_treadmill_and_restart_it_on_resume()
     {
-        var rig = await Rig.StartAsync(new RideSettings { PauseBehavior = PauseBehavior.PauseTreadmill });
+        var rig = await Rig.StartAsync(NoLead with {PauseBehavior = PauseBehavior.PauseTreadmill });
         await rig.PlayAtAsync(45);
         rig.TakeSent();
 
@@ -304,7 +375,7 @@ public sealed class RideEngineTests
     [TestMethod]
     public async Task Pause_can_be_ignored()
     {
-        var rig = await Rig.StartAsync(new RideSettings { PauseBehavior = PauseBehavior.Nothing });
+        var rig = await Rig.StartAsync(NoLead with {PauseBehavior = PauseBehavior.Nothing });
         await rig.PlayAtAsync(45);
         rig.TakeSent();
 
@@ -317,7 +388,7 @@ public sealed class RideEngineTests
     [TestMethod]
     public async Task Pause_before_the_first_play_sends_nothing()
     {
-        var rig = await Rig.StartAsync(new RideSettings { PauseBehavior = PauseBehavior.PauseTreadmill });
+        var rig = await Rig.StartAsync(NoLead with {PauseBehavior = PauseBehavior.PauseTreadmill });
 
         rig.Video.SetState(VideoState.Paused);
 

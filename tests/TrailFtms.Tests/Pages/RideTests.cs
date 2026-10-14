@@ -131,14 +131,14 @@ public sealed class RideTests
         using var _ = ctx;
         ctx.Ftms.Writes.Clear();
 
-        ctx.Video.CurrentTime = 45; // Blue Pools: 3.0 km/h, 3 % from 0:40 to 0:50
+        ctx.Video.CurrentTime = 44; // Blue Pools: 3.0 km/h, 3 % from 0:40 to 0:50 (1 % sent 5 s early)
         await cut.InvokeAsync(() => ctx.Video.SetState(VideoState.Playing));
 
         cut.WaitForAssertion(() => Assert.HasCount(2, cut.FindAll(".target").Take(2).Where(t => t.TextContent.StartsWith("Consigne"))));
         var targets = cut.FindAll(".target").Select(t => t.TextContent).ToList();
         Assert.AreEqual("Consigne 3,0", targets[0]);
         Assert.AreEqual("Consigne 3", targets[1]);
-        Assert.AreEqual("dans 0:05", targets[2]); // next: 1 % at 0:50
+        Assert.AreEqual("dans 0:06", targets[2]); // next: 1 % at 0:50
         StringAssert.Contains(cut.Find(".metric.next .value").TextContent, "1 %");
         StringAssert.Contains(cut.Markup, "Synchro active");
         CollectionAssert.AreEqual(new byte[] { 0x07 }, ctx.Ftms.Writes[0]);

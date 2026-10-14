@@ -15,6 +15,10 @@
                 <WinOldNumberBox TValue="int" Label="@($"{L["SpeedFactor"]} (%)")" Min="50" Max="150" Step="5"
                                  Value="SpeedPercent" ValueChanged="SetSpeedPercentAsync" />
                 <WinOldLabel Class="help">@L["SpeedFactorHelp"]</WinOldLabel>
+                <WinOldNumberBox TValue="double" Label="@L["InclineSecondsPerStep"]" Min="0" Max="10" Step="0.5"
+                                 Value="_settings.Ride.InclineSecondsPerStep"
+                                 ValueChanged="v => SaveAsync(_settings with { Ride = _settings.Ride with { InclineSecondsPerStep = Math.Clamp(v, 0, 10) } })" />
+                <WinOldLabel Class="help">@L["InclineSecondsPerStepHelp"]</WinOldLabel>
             </div>
         </WinOldFrame>
 
