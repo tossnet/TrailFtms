@@ -78,11 +78,12 @@ public sealed class ProgramsTests
     {
         using var ctx = new AppTestContext();
         var cut = ctx.Render<TrailFtms.Pages.Programs>();
-        cut.WaitForAssertion(() => Assert.HasCount(1, cut.FindAll("img.thumb")));
+        cut.WaitForAssertion(() => Assert.HasCount(2, cut.FindAll("img.thumb")));
 
         Assert.AreEqual("https://i.ytimg.com/vi/KiEN4HxM4ic/mqdefault.jpg", cut.Find("img.thumb").GetAttribute("src"));
-        var start = cut.FindAll("button").Single(b => b.TextContent.Trim() == "Démarrer");
-        StringAssert.Contains(start.ClassName, "primary");
+        var starts = cut.FindAll("button").Where(b => b.TextContent.Trim() == "Démarrer").ToList();
+        Assert.HasCount(2, starts);
+        Assert.IsTrue(starts.All(b => b.ClassName!.Contains("primary")));
 
         cut.Find("img.thumb").Click();
         StringAssert.EndsWith(ctx.Services.GetRequiredService<NavigationManager>().Uri, "ride?program=blue-pools-nz");
