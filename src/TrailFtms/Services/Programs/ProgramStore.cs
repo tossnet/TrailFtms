@@ -5,12 +5,15 @@ using TrailFtms.Services.Storage;
 namespace TrailFtms.Services.Programs;
 
 /// <summary>
-/// Programs shipped with the app (wwwroot/programs, listed in index.json) plus the ones imported
+/// Programs shipped with the app (wwwroot/data/programs, listed in index.json) plus the ones imported
 /// by the user, kept in the browser storage. An imported program replaces a shipped one with the same id.
 /// </summary>
 public sealed class ProgramStore(HttpClient http, IBrowserStorage storage)
 {
-    private const string IndexPath = "programs/index.json";
+    // Not "programs/": a folder with the name of a page breaks that page on GitHub Pages
+    // (reloading /programs would redirect to the folder and show its index.json).
+    private const string Folder = "data/programs";
+    private const string IndexPath = $"{Folder}/index.json";
     private const string StorageKey = "trailftms.programs";
 
     private readonly List<RideProgram> _embedded = [];
@@ -50,7 +53,7 @@ public sealed class ProgramStore(HttpClient http, IBrowserStorage storage)
     private async Task LoadCoreAsync()
     {
         var files = await http.GetFromJsonAsync(IndexPath, ProgramJsonContext.Default.StringArray) ?? [];
-        var texts = await Task.WhenAll(files.Select(f => http.GetStringAsync($"programs/{f}")));
+        var texts = await Task.WhenAll(files.Select(f => http.GetStringAsync($"{Folder}/{f}")));
         _embedded.AddRange(texts.Select(t => ProgramParser.Parse(t).Program).OfType<RideProgram>());
 
         var stored = await storage.GetAsync(StorageKey);

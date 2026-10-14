@@ -118,9 +118,9 @@ Un programme est un petit fichier JSON :
 
 1. Dans l'application : **Programmes > Nouveau programme**, collez le lien YouTube, lancez la vidéo et
    ajoutez un point à chaque changement de pente ou d'allure. **Enregistrer**, puis **Exporter**.
-2. Ajoutez le fichier dans [`src/TrailFtms/wwwroot/programs/`](src/TrailFtms/wwwroot/programs/). Le nom
+2. Ajoutez le fichier dans [`src/TrailFtms/wwwroot/data/programs/`](src/TrailFtms/wwwroot/data/programs/). Le nom
    du fichier est l'`id` du programme (minuscules, chiffres et tirets), par exemple `mon-sentier.json`.
-3. Ajoutez ce nom de fichier dans [`index.json`](src/TrailFtms/wwwroot/programs/index.json), dans le même dossier.
+3. Ajoutez ce nom de fichier dans [`index.json`](src/TrailFtms/wwwroot/data/programs/index.json), dans le même dossier.
 4. Ouvrez une pull request. La CI vérifie que tous les programmes fournis sont valides.
 
 Seules les vidéos dont le propriétaire autorise la lecture intégrée fonctionnent (sinon l'application le signale).

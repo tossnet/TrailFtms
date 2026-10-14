@@ -116,9 +116,9 @@ A program is a small JSON file:
 
 1. In the app: **Programmes > Nouveau programme** (new program), paste the YouTube link, play the
    video and add a point at each change of slope or pace. **Enregistrer** (save), then **Exporter** (export).
-2. Add the file to [`src/TrailFtms/wwwroot/programs/`](src/TrailFtms/wwwroot/programs/). The file name
+2. Add the file to [`src/TrailFtms/wwwroot/data/programs/`](src/TrailFtms/wwwroot/data/programs/). The file name
    is the program `id` (lowercase letters, digits and hyphens), for example `my-trail.json`.
-3. Add the file name to [`index.json`](src/TrailFtms/wwwroot/programs/index.json) in the same folder.
+3. Add the file name to [`index.json`](src/TrailFtms/wwwroot/data/programs/index.json) in the same folder.
 4. Open a pull request. The CI checks that every shipped program is valid.
 
 Only programs for videos whose owner allows embedding work (otherwise the app says so).

@@ -57,7 +57,7 @@ public sealed class ProgramParserTests
     [TestMethod]
     public void Every_shipped_program_is_valid()
     {
-        var programsDir = Path.Combine(WwwrootHttpHandler.WwwrootPath, "programs");
+        var programsDir = Path.Combine(WwwrootHttpHandler.WwwrootPath, "data", "programs");
         var files = JsonSerializer.Deserialize<string[]>(File.ReadAllText(Path.Combine(programsDir, "index.json")))!;
 
         Assert.IsNotEmpty(files);
