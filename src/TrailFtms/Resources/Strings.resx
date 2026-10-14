@@ -189,6 +189,27 @@
   <data name="ByAuthor" xml:space="preserve">
     <value>par {0}</value>
   </data>
+  <data name="Difficulty_1" xml:space="preserve">
+    <value>Facile</value>
+  </data>
+  <data name="Difficulty_2" xml:space="preserve">
+    <value>Modéré</value>
+  </data>
+  <data name="Difficulty_3" xml:space="preserve">
+    <value>Soutenu</value>
+  </data>
+  <data name="Difficulty_4" xml:space="preserve">
+    <value>Difficile</value>
+  </data>
+  <data name="Difficulty_5" xml:space="preserve">
+    <value>Très difficile</value>
+  </data>
+  <data name="DifficultyStats" xml:space="preserve">
+    <value>{0:0.0} km · D+ {1:0} m · max {2:0} %</value>
+  </data>
+  <data name="DifficultyHelp" xml:space="preserve">
+    <value>Difficulté calculée à partir des vitesses, des inclinaisons et de la durée (dépense énergétique estimée), sans le multiplicateur de vitesse.</value>
+  </data>
   <data name="NoPrograms" xml:space="preserve">
     <value>Aucun programme.</value>
   </data>

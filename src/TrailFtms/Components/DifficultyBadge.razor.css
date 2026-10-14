@@ -1,0 +1,38 @@
+.difficulty {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    font-size: 0.8125rem;
+    --level: var(--tf-level-1);
+}
+
+.level-2 { --level: var(--tf-level-2); }
+.level-3 { --level: var(--tf-level-3); }
+.level-4 { --level: var(--tf-level-4); }
+.level-5 { --level: var(--tf-level-5); }
+
+.dots {
+    display: inline-flex;
+    gap: 3px;
+}
+
+.dot {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    border: 1px solid var(--level);
+}
+
+    .dot.on {
+        background: var(--level);
+    }
+
+.label {
+    font-weight: 600;
+    color: var(--level);
+}
+
+.stats {
+    color: var(--tf-muted);
+}

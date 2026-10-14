@@ -44,14 +44,17 @@
             <div class="program">
                 <img class="thumb" src="@($"https://i.ytimg.com/vi/{program.YoutubeId}/mqdefault.jpg")" alt=""
                      width="128" height="72" loading="lazy" @onclick="@(() => Start(program))" />
-                <WinOldLabel Class="summary">
-                    @L["ProgramSummary", program.Segments.Count, Formatting.Time(program.DurationSeconds)]
-                    @if (program.Author is not null)
-                    {
-                        <text>, @L["ByAuthor", program.Author]</text>
-                    }
-                    (@(Store.IsImported(program.Id) ? L["Imported"] : L["Embedded"]))
-                </WinOldLabel>
+                <div class="summary">
+                    <WinOldLabel>
+                        @L["ProgramSummary", program.Segments.Count, Formatting.Time(program.DurationSeconds)]
+                        @if (program.Author is not null)
+                        {
+                            <text>, @L["ByAuthor", program.Author]</text>
+                        }
+                        (@(Store.IsImported(program.Id) ? L["Imported"] : L["Embedded"]))
+                    </WinOldLabel>
+                    <DifficultyBadge Program="program" />
+                </div>
                 <div class="actions">
                     <WinOldButton Class="primary" OnClick="@(() => Start(program))"><BiIcon Name="BiIconName.PlayFill" /> @L["Start"]</WinOldButton>
                     <WinOldButton OnClick="@(() => Navigation.NavigateTo($"editor?program={program.Id}"))"><BiIcon Name="BiIconName.Pencil" /> @L["Edit"]</WinOldButton>

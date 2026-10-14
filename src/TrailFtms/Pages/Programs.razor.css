@@ -9,8 +9,11 @@
     gap: 0.5rem 1rem;
 }
 
-    .program ::deep .summary {
+    .program .summary {
         flex: 1 1 12rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
     }
 
 .thumb {
