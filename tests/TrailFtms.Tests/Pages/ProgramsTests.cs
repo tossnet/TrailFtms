@@ -25,6 +25,11 @@ public sealed class ProgramsTests
         var points = WwwrootHttpHandler.ShippedProgram("blue-pools-nz").Segments.Count;
         StringAssert.Contains(cut.Markup, $"{points} points, durée 51:52, par tossnet");
         StringAssert.Contains(cut.Markup, "(fourni)");
+
+        var badge = cut.Find(".difficulty"); // Blue Pools first
+        Assert.AreEqual("Modéré", badge.QuerySelector(".label")!.TextContent);
+        Assert.AreEqual("3,7 km · D+ 78 m · max 10 %", badge.QuerySelector(".stats")!.TextContent);
+        Assert.HasCount(2, badge.QuerySelectorAll(".dot.on"));
     }
 
     [TestMethod]

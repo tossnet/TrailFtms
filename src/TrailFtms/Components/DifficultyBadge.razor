@@ -1,0 +1,22 @@
+@inject IStringLocalizer<Strings> L
+
+@* Difficulty level (filled dots) and the figures it comes from. *@
+<div class="difficulty level-@_difficulty.Level" title="@L["DifficultyHelp"]">
+    <span class="dots" aria-hidden="true">
+        @for (var i = 1; i <= ProgramDifficulty.MaxLevel; i++)
+        {
+            <span class="dot @(i <= _difficulty.Level ? "on" : null)"></span>
+        }
+    </span>
+    <span class="label">@L[$"Difficulty_{_difficulty.Level}"]</span>
+    <span class="stats">@L["DifficultyStats", _difficulty.DistanceKm, _difficulty.ElevationGainM, _difficulty.MaxIncline]</span>
+</div>
+
+@code {
+    private ProgramDifficulty _difficulty;
+
+    [Parameter, EditorRequired]
+    public RideProgram Program { get; set; } = new();
+
+    protected override void OnParametersSet() => _difficulty = ProgramDifficulty.Of(Program);
+}

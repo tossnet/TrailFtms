@@ -18,6 +18,12 @@
     --tf-speed-1: #3987e5;
     --tf-speed-2: #1c5cab;
     --tf-speed-3: #0d366b;
+    /* Program difficulty, easy to very hard (text on the page background). */
+    --tf-level-1: #107c10;
+    --tf-level-2: #5b7d00;
+    --tf-level-3: #a35d00;
+    --tf-level-4: #c43e00;
+    --tf-level-5: #c42b1c;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -35,6 +41,11 @@
         --tf-speed-1: #3987e5;
         --tf-speed-2: #6da7ec;
         --tf-speed-3: #b7d3f6;
+        --tf-level-1: #6ccb5f;
+        --tf-level-2: #b5d35a;
+        --tf-level-3: #f7b955;
+        --tf-level-4: #ff8c5a;
+        --tf-level-5: #ff99a4;
     }
 }
 

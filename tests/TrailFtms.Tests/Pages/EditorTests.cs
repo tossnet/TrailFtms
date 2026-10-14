@@ -168,4 +168,20 @@ public sealed class EditorTests
 
         Assert.AreEqual(125, rig.Ctx.Video.CurrentTime);
     }
+
+    [TestMethod]
+    public void Difficulty_follows_the_points()
+    {
+        using var rig = Render();
+        rig.Ctx.Video.Duration = 600;
+        rig.Type("Lien ou identifiant YouTube", "KiEN4HxM4ic");
+        rig.Click("Charger");
+        rig.Ctx.Time.Advance(TimeSpan.FromMilliseconds(250)); // reads the video duration
+
+        AddPointAt(rig, 0, "3", "0"); // 10 min easy walk
+        rig.Cut.WaitForAssertion(() => Assert.AreEqual("Facile", rig.Cut.Find(".difficulty .label").TextContent));
+
+        AddPointAt(rig, 300, "6", "15"); // then 5 min steep climb
+        rig.Cut.WaitForAssertion(() => Assert.AreEqual("Soutenu", rig.Cut.Find(".difficulty .label").TextContent));
+    }
 }
