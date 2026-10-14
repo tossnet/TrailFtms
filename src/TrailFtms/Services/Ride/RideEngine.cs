@@ -180,7 +180,7 @@ public sealed class RideEngine : IAsyncDisposable
         NextChangeIn = SegmentIndex + 1 < segments.Count ? segments[SegmentIndex + 1].T - VideoTime : null;
         var segment = segments[SegmentIndex];
         TargetSpeed = SpeedTarget(segment.Speed * Settings.SpeedFactor);
-        TargetIncline = InclineTarget(segment.Incline);
+        TargetIncline = InclineAhead(segments);
 
         if (_pauseApplied)
         {
@@ -198,6 +198,29 @@ public sealed class RideEngine : IAsyncDisposable
         await SetSpeedAsync(TargetSpeed.Value);
         await SetInclineAsync(TargetIncline.Value);
     }
+
+    /// <summary>
+    /// Incline of the current segment, or of the next incline change once the treadmill needs
+    /// to start moving so that it is reached on time (the motor moves one step every InclineSecondsPerStep).
+    /// </summary>
+    private double InclineAhead(IReadOnlyList<ProgramSegment> segments)
+    {
+        var current = InclineTarget(segments[SegmentIndex].Incline);
+        if (Settings.InclineSecondsPerStep <= 0)
+            return current;
+
+        for (var i = SegmentIndex + 1; i < segments.Count; i++)
+        {
+            var next = InclineTarget(segments[i].Incline);
+            if (next == current)
+                continue; // speed-only change
+            var travel = Math.Abs(next - current) / InclineStep * Settings.InclineSecondsPerStep;
+            return segments[i].T - VideoTime <= travel ? next : current;
+        }
+        return current;
+    }
+
+    private double InclineStep => _treadmill.InclineRange?.Step is > 0 and var s ? s : 1.0;
 
     private async Task ApplyPauseAsync()
     {
@@ -224,8 +247,7 @@ public sealed class RideEngine : IAsyncDisposable
         _cooldownTicks = 0;
 
         var incline = _sentIncline ?? 0;
-        var step = _treadmill.InclineRange?.Step is > 0 and var s ? s : 1.0;
-        var lowerIncline = InclineTarget(incline > 0 ? Math.Max(0, incline - step) : Math.Min(0, incline + step));
+        var lowerIncline = InclineTarget(incline > 0 ? Math.Max(0, incline - InclineStep) : Math.Min(0, incline + InclineStep));
         if (lowerIncline != incline)
         {
             await SetInclineAsync(lowerIncline);

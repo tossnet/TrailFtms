@@ -20,4 +20,10 @@ public sealed record RideSettings
 
     /// <summary>Walking speed used by <see cref="PauseBehavior.SlowDown"/>, in km/h.</summary>
     public double PauseSpeed { get; init; } = 3.0;
+
+    /// <summary>
+    /// Seconds the treadmill takes to move the incline by one machine step (2.5 s on the Run-18).
+    /// Incline changes are sent this much earlier per step so the slope is reached on time. 0 disables it.
+    /// </summary>
+    public double InclineSecondsPerStep { get; init; } = 2.5;
 }
