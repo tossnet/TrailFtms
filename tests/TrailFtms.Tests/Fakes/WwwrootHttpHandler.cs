@@ -13,7 +13,7 @@ public sealed class WwwrootHttpHandler : HttpMessageHandler
 
     /// <summary>A shipped program as published, so tests follow its content when it is improved.</summary>
     public static TrailFtms.Services.Programs.RideProgram ShippedProgram(string id) =>
-        TrailFtms.Services.Programs.ProgramParser.Parse(File.ReadAllText(Path.Combine(WwwrootPath, "programs", $"{id}.json"))).Program!;
+        TrailFtms.Services.Programs.ProgramParser.Parse(File.ReadAllText(Path.Combine(WwwrootPath, "data", "programs", $"{id}.json"))).Program!;
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
