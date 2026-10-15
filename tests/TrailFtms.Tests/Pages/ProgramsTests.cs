@@ -83,11 +83,11 @@ public sealed class ProgramsTests
     {
         using var ctx = new AppTestContext();
         var cut = ctx.Render<TrailFtms.Pages.Programs>();
-        cut.WaitForAssertion(() => Assert.HasCount(2, cut.FindAll("img.thumb")));
+        cut.WaitForAssertion(() => Assert.HasCount(3, cut.FindAll("img.thumb")));
 
         Assert.AreEqual("https://i.ytimg.com/vi/KiEN4HxM4ic/mqdefault.jpg", cut.Find("img.thumb").GetAttribute("src"));
         var starts = cut.FindAll("button").Where(b => b.TextContent.Trim() == "Démarrer").ToList();
-        Assert.HasCount(2, starts);
+        Assert.HasCount(3, starts);
         Assert.IsTrue(starts.All(b => b.ClassName!.Contains("primary")));
 
         cut.Find("img.thumb").Click();
