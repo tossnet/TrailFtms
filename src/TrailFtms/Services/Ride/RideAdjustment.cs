@@ -42,6 +42,7 @@ public readonly record struct RideAdjustment(double T, AdjustedValue Kind, doubl
 /// Watches one measured value (speed or incline) against the last one sent. Once the treadmill has reached
 /// the sent value, a different value kept for <see cref="StableSeconds"/> of video is a change made on the
 /// console. Values still moving towards a new target (belt ramp, incline motor) are never reported.
+/// Before any value is expected (free ride, nothing sent), the first stable value is reported.
 /// </summary>
 internal sealed class AdjustmentWatch
 {
@@ -73,18 +74,18 @@ internal sealed class AdjustmentWatch
     /// </summary>
     public (double T, double Value)? Observe(double time, double measured, double step)
     {
-        if (_expected is not { } expected)
-            return null;
-
         var value = Math.Round(Math.Round(measured / step) * step, 2);
-        if (Same(value, expected, step))
+        if (_expected is { } expected)
         {
-            _reached = true;
-            _deviationSince = _candidate = null;
-            return null;
+            if (Same(value, expected, step))
+            {
+                _reached = true;
+                _deviationSince = _candidate = null;
+                return null;
+            }
+            if (!_reached)
+                return null;
         }
-        if (!_reached)
-            return null;
 
         // A seek back would date the change before it happened: start over.
         if (time < _deviationSince || time < _candidateSince)

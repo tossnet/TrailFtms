@@ -10,6 +10,7 @@ public sealed class FakeVideoPlayer : IVideoPlayer
     public string? VideoId { get; private set; }
     public double CurrentTime { get; set; }
     public double Duration { get; set; }
+    public string Title { get; set; } = "";
     public List<string> Loads { get; } = [];
 
     public event Action? StateChanged;
@@ -32,6 +33,7 @@ public sealed class FakeVideoPlayer : IVideoPlayer
 
     public ValueTask<double> GetCurrentTimeAsync() => ValueTask.FromResult(CurrentTime);
     public ValueTask<double> GetDurationAsync() => ValueTask.FromResult(Duration);
+    public ValueTask<string> GetTitleAsync() => ValueTask.FromResult(Title);
 
     public Task PlayAsync()
     {

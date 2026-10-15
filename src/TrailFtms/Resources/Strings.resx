@@ -483,4 +483,25 @@
   <data name="Home" xml:space="preserve">
     <value>Accueil</value>
   </data>
+  <data name="RecordHint" xml:space="preserve">
+    <value>Lance la vidéo et cours à ton rythme : ta vitesse et ta pente sont enregistrées. STOP termine la course et télécharge le programme.</value>
+  </data>
+  <data name="RecordNeedsTreadmill" xml:space="preserve">
+    <value>Tapis non connecté : connecte-le depuis l'accueil pour enregistrer ta course.</value>
+  </data>
+  <data name="Recording" xml:space="preserve">
+    <value>Enregistrement en cours : {0} points.</value>
+  </data>
+  <data name="RecordingDone" xml:space="preserve">
+    <value>Course enregistrée : {0} points. Relance la vidéo pour continuer.</value>
+  </data>
+  <data name="RecordingSaved" xml:space="preserve">
+    <value>Course enregistrée dans tes programmes.</value>
+  </data>
+  <data name="DownloadRecording" xml:space="preserve">
+    <value>Télécharger le programme</value>
+  </data>
+  <data name="RecordedRideTitle" xml:space="preserve">
+    <value>Course du {0}</value>
+  </data>
 </root>

@@ -44,6 +44,9 @@ public interface IVideoPlayer : IAsyncDisposable
     /// <summary>Video duration in seconds (0 until the metadata is known).</summary>
     ValueTask<double> GetDurationAsync();
 
+    /// <summary>Title of the loaded video (empty until it is known).</summary>
+    ValueTask<string> GetTitleAsync();
+
     Task PlayAsync();
     Task PauseAsync();
     Task SeekAsync(double seconds);
