@@ -163,6 +163,35 @@ public sealed class RideTests
     }
 
     [TestMethod]
+    public async Task Changes_made_on_the_treadmill_can_be_downloaded_after_the_ride()
+    {
+        var (ctx, cut) = await RenderProgramAsync(connected: true);
+        using var _ = ctx;
+        var files = ctx.JSInterop.SetupModule("./js/files.js");
+
+        // Blue Pools: 3.0 km/h from 0:40 to 0:60. Speed only (bit 0 clear, no other field).
+        async Task PlayAtAsync(double seconds, double speed)
+        {
+            ctx.Ftms.Treadmill.OnTreadmillData([0x00, 0x00, .. BitConverter.GetBytes((ushort)(speed * 100))]);
+            ctx.Video.CurrentTime = seconds;
+            await cut.InvokeAsync(() => ctx.Video.SetState(VideoState.Playing)); // one engine tick
+        }
+        await PlayAtAsync(44, 3.0);
+        await PlayAtAsync(45, 3.0);
+        for (var t = 46; t <= 50; t++)
+            await PlayAtAsync(t, 3.5); // "+" pressed on the console at 0:46
+        Assert.DoesNotContain("Télécharger le programme ajusté", cut.Markup, "nothing offered during the ride");
+
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "STOP").Click();
+        cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "pente 1 fois"));
+        cut.FindAll("button").Single(b => b.TextContent.Contains("Télécharger le programme ajusté")).Click();
+
+        var download = files.VerifyInvoke("downloadText");
+        Assert.AreEqual("blue-pools-nz.json", download.Arguments[0]);
+        StringAssert.Contains((string)download.Arguments[1]!, """{ "t": 46, "speed": 3.5, "incline": 3 }""");
+    }
+
+    [TestMethod]
     public async Task Connection_loss_during_the_ride_is_shown()
     {
         var (ctx, cut) = await RenderProgramAsync(connected: true);

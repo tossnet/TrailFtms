@@ -17,6 +17,22 @@ public sealed record RideProgram
     /// <summary>Sorted by <see cref="ProgramSegment.T"/>, the first one starts at 0.</summary>
     public IReadOnlyList<ProgramSegment> Segments { get; init; } = [];
 
+    /// <summary>
+    /// Drops every segment that repeats the speed and incline of the one before it: it would change nothing.
+    /// <paramref name="segments"/> must be sorted.
+    /// </summary>
+    public static List<ProgramSegment> WithoutRepeats(IEnumerable<ProgramSegment> segments)
+    {
+        var result = new List<ProgramSegment>();
+        foreach (var segment in segments)
+        {
+            if (result.Count > 0 && result[^1].Speed == segment.Speed && result[^1].Incline == segment.Incline)
+                continue;
+            result.Add(segment);
+        }
+        return result;
+    }
+
     /// <summary>Index of the segment active at <paramref name="seconds"/> (binary search), -1 if none.</summary>
     public int SegmentIndexAt(double seconds)
     {

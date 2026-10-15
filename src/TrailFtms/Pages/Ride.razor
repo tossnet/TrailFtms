@@ -63,6 +63,17 @@
         {
             <WinOldInfoBar Icon="Icon.Alert" Message="@_warning" Closable="true" OnClose="() => _warning = null" />
         }
+        @if (_program is not null && !_engine.IsActive && _engine.Adjustments.Count > 0)
+        {
+            <div class="wo-col wo-gap-8">
+                <WinOldInfoBar Icon="Icon.Information" Closable="false"
+                               Message="@(_adjustedSaved ? L["AdjustedSaved"] : L["RideAdjusted", _engine.Adjustments.Count])" />
+                <div class="tools">
+                    <WinOldButton Default="true" OnClick="DownloadAdjustedAsync"><BiIcon Name="BiIconName.Download" /> @L["DownloadAdjusted"]</WinOldButton>
+                    <WinOldButton Disabled="_adjustedSaved" OnClick="SaveAdjustedAsync">@L["SaveAdjusted"]</WinOldButton>
+                </div>
+            </div>
+        }
 
         <div class="metrics">
             <div class="metric">
@@ -87,7 +98,7 @@
                     <span class="label">@L["Next"]</span>
                     @if (NextSegment is { } next)
                     {
-                        <span class="value">@Treadmill.ClampIncline(next.Incline).ToString("0.#")<small> %</small> @Treadmill.ClampSpeed(next.Speed * Factor).ToString("0.0")<small> km/h</small></span>
+                        <span class="value"><span>@Treadmill.ClampIncline(next.Incline).ToString("0.#")<small> %</small></span> <span>@Treadmill.ClampSpeed(next.Speed * Factor).ToString("0.0")<small> km/h</small></span></span>
                         <span class="target">@L["NextIn", Formatting.Time(Math.Ceiling(_engine.NextChangeIn ?? 0))]</span>
                     }
                     else
@@ -104,7 +115,7 @@
             {
                 <WinOldButton OnClick="Treadmill.DisconnectAsync">@L["Disconnect"]</WinOldButton>
             }
-            <span class="status">@L[$"VideoState_{Player.State}"]@(_engine.Status != RideStatus.Idle ? $" - {L[$"RideStatus_{_engine.Status}"]}" : "")</span>
+            <span class="status">@L[$"VideoState_{Player.State}"]@(_engine.Status != RideStatus.Idle ? $" - {L[$"RideStatus_{_engine.Status}"]}" : "")@(_engine.IsAdPlaying ? $" - {L["AdPlaying"]}" : "")</span>
         </div>
 
         <div class="stop-area">
@@ -129,7 +140,9 @@
     private string? _warning;
     private double _position;
     private double _duration;
+    private bool _adjustedSaved;
     private IJSObjectReference? _ui;
+    private IJSObjectReference? _files;
     private readonly CancellationTokenSource _cts = new();
 
     /// <summary>Video id or link, e.g. /ride?v=KiEN4HxM4ic.</summary>
@@ -210,11 +223,31 @@
     private void ResumeSync()
     {
         _warning = null;
+        _adjustedSaved = false;
         if (_program is not null)
             _engine.Start(_program);
     }
 
     private Task SeekAsync(double seconds) => Player.SeekAsync(seconds);
+
+    /// <summary>The program with the changes made on the treadmill console, same id so that it replaces the original.</summary>
+    private RideProgram AdjustedProgram() => RideAdjustment.ApplyAll(_program!, _engine.Adjustments);
+
+    private async Task DownloadAdjustedAsync()
+    {
+        var program = AdjustedProgram();
+        _files ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/files.js");
+        await _files.InvokeVoidAsync("downloadText", $"{program.Id}.json", ProgramParser.Serialize(program));
+    }
+
+    private async Task SaveAdjustedAsync()
+    {
+        var result = await Store.ImportAsync(ProgramParser.Serialize(AdjustedProgram()));
+        if (result.IsValid)
+            _adjustedSaved = true;
+        else
+            _error = L["InvalidProgram"];
+    }
 
     private async Task ToggleFullscreenAsync()
     {
@@ -282,11 +315,13 @@
         _engine.Changed -= OnChanged;
         _engine.WarningRaised -= OnWarning;
         await _engine.DisposeAsync();
-        if (_ui is not null)
+        foreach (var module in new[] { _ui, _files })
         {
+            if (module is null)
+                continue;
             try
             {
-                await _ui.DisposeAsync();
+                await module.DisposeAsync();
             }
             catch (JSDisconnectedException)
             {

@@ -31,6 +31,44 @@ public sealed class ProgramDraftTests
     }
 
     [TestMethod]
+    public void Adding_the_same_point_twice_keeps_a_single_one()
+    {
+        var draft = new ProgramDraft();
+        draft.SetPoint(0, 1, 0);
+        draft.SetPoint(40, 3, 3);
+
+        var index = draft.SetPoint(52, 3, 3);
+
+        Assert.AreEqual(1, index);
+        CollectionAssert.AreEqual(new[] { new ProgramSegment(0, 1, 0), new ProgramSegment(40, 3, 3) }, draft.Segments.ToArray());
+    }
+
+    [TestMethod]
+    public void A_point_inserted_before_an_identical_one_replaces_it()
+    {
+        var draft = new ProgramDraft();
+        draft.SetPoint(0, 1, 0);
+        draft.SetPoint(40, 3, 3);
+
+        var index = draft.SetPoint(30, 3, 3);
+
+        Assert.AreEqual(1, index);
+        CollectionAssert.AreEqual(new[] { new ProgramSegment(0, 1, 0), new ProgramSegment(30, 3, 3) }, draft.Segments.ToArray());
+    }
+
+    [TestMethod]
+    public void ToProgram_drops_repeated_points()
+    {
+        var draft = new ProgramDraft();
+        draft.SetPoint(0, 1, 0);
+        draft.SetPoint(40, 3, 3);
+        draft.Update(1, 1, 0); // edited rows are left alone while editing
+
+        Assert.HasCount(2, draft.Segments);
+        Assert.AreEqual(new ProgramSegment(0, 1, 0), draft.ToProgram().Segments.Single());
+    }
+
+    [TestMethod]
     public void Values_are_rounded_to_one_decimal()
     {
         var draft = new ProgramDraft();

@@ -270,6 +270,9 @@
   <data name="RideStatus_Idle" xml:space="preserve">
     <value>En attente</value>
   </data>
+  <data name="AdPlaying" xml:space="preserve">
+    <value>Publicité, allure conservée</value>
+  </data>
   <data name="RideStatus_Running" xml:space="preserve">
     <value>Synchro active</value>
   </data>
@@ -290,6 +293,18 @@
   </data>
   <data name="Halt_ConnectionLost" xml:space="preserve">
     <value>Connexion au tapis perdue : la synchro est arrêtée et aucune commande ne sera envoyée.</value>
+  </data>
+  <data name="RideAdjusted" xml:space="preserve">
+    <value>Tu as ajusté la vitesse ou la pente {0} fois depuis le tapis. Télécharge le programme ajusté pour garder ces réglages.</value>
+  </data>
+  <data name="AdjustedSaved" xml:space="preserve">
+    <value>Programme ajusté enregistré dans ce navigateur, il remplace l'original.</value>
+  </data>
+  <data name="DownloadAdjusted" xml:space="preserve">
+    <value>Télécharger le programme ajusté</value>
+  </data>
+  <data name="SaveAdjusted" xml:space="preserve">
+    <value>Enregistrer dans mes programmes</value>
   </data>
   <data name="RideWarning_CommandRejected" xml:space="preserve">
     <value>Le tapis a refusé une consigne.</value>
