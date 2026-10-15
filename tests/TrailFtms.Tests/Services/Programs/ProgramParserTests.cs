@@ -84,6 +84,15 @@ public sealed class ProgramParserTests
     }
 
     [TestMethod]
+    public void Repeated_consecutive_segments_are_dropped()
+    {
+        var result = ParseWith(d => d["segments"] = Segments((0, 4, 0), (60, 4, 0), (120, 4.5, 3), (300, 4.5, 3), (600, 4, 0)));
+
+        Assert.IsTrue(result.IsValid);
+        CollectionAssert.AreEqual(new double[] { 0, 120, 600 }, result.Program!.Segments.Select(s => s.T).ToArray());
+    }
+
+    [TestMethod]
     public void Comments_trailing_commas_and_property_case_are_tolerated()
     {
         var json = """

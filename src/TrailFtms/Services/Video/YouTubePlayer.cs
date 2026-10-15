@@ -58,6 +58,9 @@ public sealed class YouTubePlayer(IJSRuntime js) : IVideoPlayer
     public ValueTask<double> GetDurationAsync() =>
         _player?.InvokeAsync<double>("getDuration") ?? ValueTask.FromResult(0d);
 
+    public ValueTask<string> GetTitleAsync() =>
+        _player is not null && _module is not null ? _module.InvokeAsync<string>("title", _player) : ValueTask.FromResult("");
+
     public Task PlayAsync() => InvokeAsync("playVideo");
 
     public Task PauseAsync() => InvokeAsync("pauseVideo");

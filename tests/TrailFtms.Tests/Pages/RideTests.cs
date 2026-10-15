@@ -163,6 +163,35 @@ public sealed class RideTests
     }
 
     [TestMethod]
+    public async Task Changes_made_on_the_treadmill_can_be_downloaded_after_the_ride()
+    {
+        var (ctx, cut) = await RenderProgramAsync(connected: true);
+        using var _ = ctx;
+        var files = ctx.JSInterop.SetupModule("./js/files.js");
+
+        // Blue Pools: 3.0 km/h from 0:40 to 0:60. Speed only (bit 0 clear, no other field).
+        async Task PlayAtAsync(double seconds, double speed)
+        {
+            ctx.Ftms.Treadmill.OnTreadmillData([0x00, 0x00, .. BitConverter.GetBytes((ushort)(speed * 100))]);
+            ctx.Video.CurrentTime = seconds;
+            await cut.InvokeAsync(() => ctx.Video.SetState(VideoState.Playing)); // one engine tick
+        }
+        await PlayAtAsync(44, 3.0);
+        await PlayAtAsync(45, 3.0);
+        for (var t = 46; t <= 50; t++)
+            await PlayAtAsync(t, 3.5); // "+" pressed on the console at 0:46
+        Assert.DoesNotContain("Télécharger le programme ajusté", cut.Markup, "nothing offered during the ride");
+
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "STOP").Click();
+        cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "pente 1 fois"));
+        cut.FindAll("button").Single(b => b.TextContent.Contains("Télécharger le programme ajusté")).Click();
+
+        var download = files.VerifyInvoke("downloadText");
+        Assert.AreEqual("blue-pools-nz.json", download.Arguments[0]);
+        StringAssert.Contains((string)download.Arguments[1]!, """{ "t": 46, "speed": 3.5, "incline": 3 }""");
+    }
+
+    [TestMethod]
     public async Task Connection_loss_during_the_ride_is_shown()
     {
         var (ctx, cut) = await RenderProgramAsync(connected: true);
@@ -233,6 +262,62 @@ public sealed class RideTests
         CollectionAssert.AreEqual(new byte[] { 0x08, 0x01 }, ctx.Ftms.Writes[^1]);
         Assert.AreEqual(VideoState.Paused, ctx.Video.State);
         cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Arrêt demandé."));
+    }
+
+    [TestMethod]
+    public async Task Free_ride_is_recorded_and_downloaded_on_stop()
+    {
+        using var ctx = new AppTestContext();
+        await ctx.Ftms.Treadmill.ConnectAsync();
+        var files = ctx.JSInterop.SetupModule("./js/files.js");
+        ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("ride?v=KiEN4HxM4ic");
+        var cut = ctx.Render<Ride>();
+        StringAssert.Contains(cut.Markup, "ta vitesse et ta pente sont enregistrées");
+
+        ctx.Video.Title = "Blue Pools, Nouvelle-Zélande";
+        ctx.Video.Duration = 600;
+        await cut.InvokeAsync(() => ctx.Video.SetState(VideoState.Playing));
+
+        // Speed only (bit 0 clear, no other field), one measure per refresh of the page.
+        async Task RunAsync(double from, double to, double speed)
+        {
+            for (var t = from; t < to; t += 0.25)
+            {
+                ctx.Ftms.Treadmill.OnTreadmillData([0x00, 0x00, .. BitConverter.GetBytes((ushort)(speed * 100))]);
+                ctx.Video.CurrentTime = t;
+                await cut.InvokeAsync(() => ctx.Time.Advance(TimeSpan.FromMilliseconds(250)));
+            }
+        }
+        await RunAsync(0, 10, 4.0);
+        await RunAsync(10, 20, 5.0);
+        cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Enregistrement en cours : 2 points."));
+        Assert.HasCount(1, cut.FindAll(".timeline"));
+
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "STOP").Click();
+
+        cut.WaitForAssertion(() => StringAssert.Contains(cut.Markup, "Course enregistrée : 2 points."));
+        CollectionAssert.AreEqual(new byte[] { 0x08, 0x01 }, ctx.Ftms.Writes[^1]);
+        var download = files.VerifyInvoke("downloadText");
+        Assert.AreEqual("blue-pools-nouvelle-zelande.json", download.Arguments[0]);
+        var json = (string)download.Arguments[1]!;
+        StringAssert.Contains(json, "\"title\": \"Blue Pools, Nouvelle-Zélande\"");
+        StringAssert.Contains(json, "\"durationSeconds\": 600");
+        StringAssert.Contains(json, """{ "t": 0, "speed": 4, "incline": 0 }""");
+        StringAssert.Contains(json, """{ "t": 10, "speed": 5, "incline": 0 }""");
+
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "STOP").Click();
+        Assert.HasCount(1, files.Invocations.Where(i => i.Identifier == "downloadText"), "downloaded once");
+    }
+
+    [TestMethod]
+    public void Free_ride_needs_the_treadmill_to_record()
+    {
+        using var ctx = new AppTestContext();
+        ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("ride?v=KiEN4HxM4ic");
+
+        var cut = ctx.Render<Ride>();
+
+        StringAssert.Contains(cut.Markup, "connecte-le depuis l'accueil pour enregistrer ta course");
     }
 
     [TestMethod]

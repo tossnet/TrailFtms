@@ -42,7 +42,7 @@ public static partial class ProgramParser
     private static partial Regex IdRegex();
 
     /// <summary>
-    /// Parses and validates a program. Segments are sorted by time, the YouTube id may be a link.
+    /// Parses and validates a program. Segments are sorted by time and repeated ones dropped, the YouTube id may be a link.
     /// Returns every error found, the program is null when there is at least one.
     /// </summary>
     public static ProgramParseResult Parse(string json)
@@ -69,7 +69,9 @@ public static partial class ProgramParser
         };
 
         var errors = Validate(program);
-        return new(errors.Count == 0 ? program : null, errors);
+        if (errors.Count > 0)
+            return new(null, errors);
+        return new(program with { Segments = RideProgram.WithoutRepeats(program.Segments) }, errors);
     }
 
     // Exported files are meant to be read and edited by hand: keep accents as is, same line endings everywhere.

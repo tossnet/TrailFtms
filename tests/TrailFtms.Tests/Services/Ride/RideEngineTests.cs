@@ -60,6 +60,24 @@ public sealed class RideEngineTests
             await Engine.TickAsync();
         }
 
+        /// <summary>Treadmill Data notification with the measured speed and incline.</summary>
+        public void Measure(double speed, double incline)
+        {
+            var frame = new byte[8];
+            BinaryPrimitives.WriteUInt16LittleEndian(frame, 0x0008); // speed (bit 0 clear) + inclination
+            BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(2), (ushort)Math.Round(speed * 100));
+            BinaryPrimitives.WriteInt16LittleEndian(frame.AsSpan(4), (short)Math.Round(incline * 10));
+            Js.Treadmill.OnTreadmillData(frame);
+        }
+
+        /// <summary>Plays from <paramref name="from"/> to <paramref name="to"/> (one tick per second) with these measures.</summary>
+        public async Task RideAsync(double from, double to, double speed, double incline)
+        {
+            Measure(speed, incline);
+            for (var t = from; t <= to; t++)
+                await PlayAtAsync(t);
+        }
+
         public async Task TicksAsync(int count)
         {
             for (var i = 0; i < count; i++)
@@ -395,6 +413,61 @@ public sealed class RideEngineTests
         Assert.IsEmpty(rig.TakeSent());
     }
 
+    // ---- Ads ----
+
+    [TestMethod]
+    public async Task Ad_keeps_the_current_pace_then_the_ride_resumes()
+    {
+        var rig = await Rig.StartAsync();
+        rig.Video.Duration = 600;
+        await rig.PlayAtAsync(45); // 3 km/h, 3 %
+        rig.TakeSent();
+
+        rig.Video.Duration = 30; // mid-roll: time and duration are the ad's
+        await rig.PlayAtAsync(2);
+        await rig.PlayAtAsync(3);
+
+        Assert.IsTrue(rig.Engine.IsAdPlaying);
+        Assert.IsEmpty(rig.TakeSent());
+        Assert.AreEqual(45, rig.Engine.VideoTime);
+
+        rig.Video.Duration = 600;
+        await rig.PlayAtAsync(65);
+
+        Assert.IsFalse(rig.Engine.IsAdPlaying);
+        CollectionAssert.AreEqual(new[] { "speed 3.2", "incline 0" }, rig.TakeSent());
+    }
+
+    [TestMethod]
+    public async Task Ad_ending_does_not_end_the_ride()
+    {
+        var rig = await Rig.StartAsync();
+        rig.Video.Duration = 600;
+        await rig.PlayAtAsync(45);
+        rig.TakeSent();
+
+        rig.Video.Duration = 30;
+        await rig.PlayAtAsync(30);
+        rig.Video.SetState(VideoState.Ended);
+
+        Assert.AreEqual(RideStatus.Running, rig.Engine.Status);
+        Assert.IsEmpty(rig.TakeSent());
+    }
+
+    [TestMethod]
+    public async Task Ad_is_detected_against_the_program_duration_before_the_video_plays()
+    {
+        var rig = await Rig.StartAsync();
+        await rig.PlayAtAsync(45);
+        rig.TakeSent();
+
+        rig.Video.Duration = 15; // program lasts 600 s
+        await rig.PlayAtAsync(1);
+
+        Assert.IsTrue(rig.Engine.IsAdPlaying);
+        Assert.IsEmpty(rig.TakeSent());
+    }
+
     // ---- End of video ----
 
     [TestMethod]
@@ -533,5 +606,82 @@ public sealed class RideEngineTests
         CollectionAssert.AreEqual(new[] { RideWarning.NoResponse }, rig.Warnings);
         Assert.AreEqual(RideStatus.Running, rig.Engine.Status);
         CollectionAssert.Contains(rig.TakeSent(), "incline 3");
+    }
+
+    // ---- Changes made on the treadmill console ----
+
+    [TestMethod]
+    public async Task A_change_kept_on_the_console_is_recorded_from_its_start()
+    {
+        var rig = await Rig.StartAsync();
+        await rig.RideAsync(0, 9, 1.0, 0);
+
+        await rig.RideAsync(10, 11, 1.2, 0); // pressing "+" several times
+        await rig.RideAsync(12, 20, 1.5, 0);
+
+        CollectionAssert.AreEqual(new[] { new RideAdjustment(10, AdjustedValue.Speed, 1.5) }, rig.Engine.Adjustments.ToArray());
+    }
+
+    [TestMethod]
+    public async Task A_short_change_is_ignored()
+    {
+        var rig = await Rig.StartAsync();
+        await rig.RideAsync(0, 9, 1.0, 0);
+
+        await rig.RideAsync(10, 11, 1.5, 0);
+        await rig.RideAsync(12, 20, 1.0, 0);
+
+        Assert.IsEmpty(rig.Engine.Adjustments);
+    }
+
+    [TestMethod]
+    public async Task The_treadmill_moving_to_a_new_target_is_not_a_change()
+    {
+        var rig = await Rig.StartAsync();
+        await rig.RideAsync(0, 39, 1.0, 0);
+
+        await rig.RideAsync(40, 44, 2.0, 1); // belt and incline motor still on their way to 3 km/h and 3 %
+        await rig.RideAsync(45, 49, 3.0, 3);
+
+        Assert.IsEmpty(rig.Engine.Adjustments);
+    }
+
+    [TestMethod]
+    public async Task An_incline_change_is_recorded()
+    {
+        var rig = await Rig.StartAsync();
+        await rig.RideAsync(0, 9, 1.0, 0);
+        rig.TakeSent();
+
+        await rig.RideAsync(10, 20, 1.0, 2);
+
+        CollectionAssert.AreEqual(new[] { new RideAdjustment(10, AdjustedValue.Incline, 2) }, rig.Engine.Adjustments.ToArray());
+        Assert.IsEmpty(rig.TakeSent()); // the user's value is not fought
+    }
+
+    [TestMethod]
+    public async Task A_speed_change_is_recorded_in_program_units()
+    {
+        var rig = await Rig.StartAsync(NoLead with { SpeedFactor = 1.1 });
+        await rig.RideAsync(0, 9, 1.1, 0);
+
+        await rig.RideAsync(10, 20, 2.2, 0);
+
+        Assert.AreEqual(new RideAdjustment(10, AdjustedValue.Speed, 2.0), rig.Engine.Adjustments.Single());
+    }
+
+    [TestMethod]
+    public async Task Changes_made_while_the_video_is_paused_are_ignored()
+    {
+        var rig = await Rig.StartAsync(NoLead with { PauseBehavior = PauseBehavior.Nothing });
+        await rig.RideAsync(0, 9, 1.0, 0);
+
+        rig.Video.SetState(VideoState.Paused);
+        await rig.TicksAsync(1);
+        rig.Measure(2.0, 0);
+        await rig.TicksAsync(20);
+        await rig.RideAsync(10, 20, 2.0, 0);
+
+        Assert.IsEmpty(rig.Engine.Adjustments);
     }
 }

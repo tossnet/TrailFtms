@@ -37,7 +37,7 @@ public sealed class ProgramDraft
         YoutubeId = YoutubeId.Trim(),
         Author = string.IsNullOrWhiteSpace(Author) ? null : Author.Trim(),
         DurationSeconds = DurationSeconds,
-        Segments = [.. _segments],
+        Segments = RideProgram.WithoutRepeats(_segments),
     };
 
     /// <summary>Segment active at <paramref name="seconds"/>, null before the first one.</summary>
@@ -55,7 +55,8 @@ public sealed class ProgramDraft
 
     /// <summary>
     /// Adds a point at <paramref name="seconds"/> (rounded down to the second), or replaces the one
-    /// already there. Returns its index.
+    /// already there. Points that would repeat the previous one are dropped (adding the same point twice
+    /// keeps a single one). Returns the index of the point in force at that second.
     /// </summary>
     public int SetPoint(double seconds, double speed, double incline)
     {
@@ -63,15 +64,19 @@ public sealed class ProgramDraft
         var segment = new ProgramSegment(t, Math.Round(speed, 1), Math.Round(incline, 1));
         var index = _segments.FindIndex(s => s.T >= t);
         if (index < 0)
-        {
             _segments.Add(segment);
-            return _segments.Count - 1;
-        }
-        if (_segments[index].T == t)
+        else if (_segments[index].T == t)
             _segments[index] = segment;
         else
             _segments.Insert(index, segment);
-        return index;
+
+        var kept = RideProgram.WithoutRepeats(_segments);
+        if (kept.Count != _segments.Count)
+        {
+            _segments.Clear();
+            _segments.AddRange(kept);
+        }
+        return _segments.FindLastIndex(s => s.T <= t);
     }
 
     public void Update(int index, double speed, double incline) =>

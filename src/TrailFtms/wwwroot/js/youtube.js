@@ -22,6 +22,11 @@ function loadApi() {
     return apiReady;
 }
 
+// getVideoData() is not part of the documented API: no title rather than an error if it goes away.
+export function title(player) {
+    return player.getVideoData?.()?.title ?? "";
+}
+
 export async function create(container, videoId, dotnet) {
     await loadApi();
     // YT.Player replaces its target element: give it a child so Blazor keeps owning the container.

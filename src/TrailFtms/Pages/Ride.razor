@@ -28,6 +28,13 @@
                              OnSeek="SeekAsync" AriaLabel="@L["InclineProfile"]" />
         </div>
     }
+    else if (_recorder is { HasData: true })
+    {
+        <div class="ride-profile">
+            <ProgramTimeline Program="RecordedProfile" Duration="ProfileDuration" Position="_position" Window="ProfileWindow"
+                             AriaLabel="@L["InclineProfile"]" />
+        </div>
+    }
 
     <aside class="ride-panel">
         <div class="panel-head">
@@ -41,6 +48,25 @@
                 <WinOldTextBox Label="@L["VideoLink"]" @bind-Value="_link" />
                 <WinOldButton Default="true" OnClick="Load">@L["Load"]</WinOldButton>
             </div>
+            @if (_recorder is { HasData: true } recorder)
+            {
+                <div class="wo-col wo-gap-8">
+                    <WinOldInfoBar Icon="Icon.Information" Closable="false"
+                                   Message="@(_savedRevision == recorder.Revision ? L["RecordingSaved"] : L[IsRecording ? "Recording" : "RecordingDone", recorder.Segments.Count])" />
+                    @if (!IsRecording)
+                    {
+                        <div class="tools">
+                            <WinOldButton Default="true" OnClick="DownloadRecordingAsync"><BiIcon Name="BiIconName.Download" /> @L["DownloadRecording"]</WinOldButton>
+                            <WinOldButton Disabled="_savedRevision == recorder.Revision" OnClick="SaveRecordingAsync">@L["SaveAdjusted"]</WinOldButton>
+                        </div>
+                    }
+                </div>
+            }
+            else if (_videoId is not null)
+            {
+                <WinOldInfoBar Icon="Icon.Information" Closable="false"
+                               Message="@L[Treadmill.State == TreadmillState.Connected ? "RecordHint" : "RecordNeedsTreadmill"]" />
+            }
         }
 
         @if (_error is not null)
@@ -62,6 +88,17 @@
         @if (_warning is not null)
         {
             <WinOldInfoBar Icon="Icon.Alert" Message="@_warning" Closable="true" OnClose="() => _warning = null" />
+        }
+        @if (_program is not null && !_engine.IsActive && _engine.Adjustments.Count > 0)
+        {
+            <div class="wo-col wo-gap-8">
+                <WinOldInfoBar Icon="Icon.Information" Closable="false"
+                               Message="@(_adjustedSaved ? L["AdjustedSaved"] : L["RideAdjusted", _engine.Adjustments.Count])" />
+                <div class="tools">
+                    <WinOldButton Default="true" OnClick="DownloadAdjustedAsync"><BiIcon Name="BiIconName.Download" /> @L["DownloadAdjusted"]</WinOldButton>
+                    <WinOldButton Disabled="_adjustedSaved" OnClick="SaveAdjustedAsync">@L["SaveAdjusted"]</WinOldButton>
+                </div>
+            </div>
         }
 
         <div class="metrics">
@@ -87,7 +124,7 @@
                     <span class="label">@L["Next"]</span>
                     @if (NextSegment is { } next)
                     {
-                        <span class="value">@Treadmill.ClampIncline(next.Incline).ToString("0.#")<small> %</small> @Treadmill.ClampSpeed(next.Speed * Factor).ToString("0.0")<small> km/h</small></span>
+                        <span class="value"><span>@Treadmill.ClampIncline(next.Incline).ToString("0.#")<small> %</small></span> <span>@Treadmill.ClampSpeed(next.Speed * Factor).ToString("0.0")<small> km/h</small></span></span>
                         <span class="target">@L["NextIn", Formatting.Time(Math.Ceiling(_engine.NextChangeIn ?? 0))]</span>
                     }
                     else
@@ -104,7 +141,7 @@
             {
                 <WinOldButton OnClick="Treadmill.DisconnectAsync">@L["Disconnect"]</WinOldButton>
             }
-            <span class="status">@L[$"VideoState_{Player.State}"]@(_engine.Status != RideStatus.Idle ? $" - {L[$"RideStatus_{_engine.Status}"]}" : "")</span>
+            <span class="status">@L[$"VideoState_{Player.State}"]@(_engine.Status != RideStatus.Idle ? $" - {L[$"RideStatus_{_engine.Status}"]}" : "")@(_engine.IsAdPlaying ? $" - {L["AdPlaying"]}" : "")</span>
         </div>
 
         <div class="stop-area">
@@ -129,7 +166,12 @@
     private string? _warning;
     private double _position;
     private double _duration;
+    private bool _adjustedSaved;
+    private RideRecorder? _recorder;
+    private int? _downloadedRevision;
+    private int? _savedRevision;
     private IJSObjectReference? _ui;
+    private IJSObjectReference? _files;
     private readonly CancellationTokenSource _cts = new();
 
     /// <summary>Video id or link, e.g. /ride?v=KiEN4HxM4ic.</summary>
@@ -147,6 +189,12 @@
     private double ProfileDuration => _program?.DurationSeconds is > 0 and var d ? d : _duration;
 
     private double? ProfileWindow => ProfileDuration > ScrollingProfileFrom ? ProfileWindowSeconds : null;
+
+    /// <summary>The ride recorded so far, for the profile.</summary>
+    private RideProgram RecordedProfile => _recorder!.ToProgram("", Title, _videoId!);
+
+    /// <summary>Free ride: the video plays, the recorder follows the treadmill.</summary>
+    private bool IsRecording => Player.State is VideoState.Playing or VideoState.Buffering;
 
     private ProgramSegment? NextSegment =>
         _program is not null && _engine.SegmentIndex >= 0 && _engine.SegmentIndex + 1 < _program.Segments.Count
@@ -199,22 +247,90 @@
         }
 
         _videoId = id;
+        _recorder = null;
+        _downloadedRevision = _savedRevision = null;
         Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("v", id), replace: true);
     }
 
     private void Back() => Navigation.NavigateTo(_program is null ? "" : "programs");
 
-    /// <summary>STOP button and Space / Escape: always stops the belt and the video.</summary>
-    private Task StopAsync() => _engine.StopAsync();
+    /// <summary>STOP button and Space / Escape: always stops the belt and the video, and ends a free ride.</summary>
+    private async Task StopAsync()
+    {
+        await _engine.StopAsync();
+        if (_recorder is { HasData: true } recorder && recorder.Revision != _downloadedRevision)
+            await DownloadRecordingAsync();
+    }
 
     private void ResumeSync()
     {
         _warning = null;
+        _adjustedSaved = false;
         if (_program is not null)
             _engine.Start(_program);
     }
 
     private Task SeekAsync(double seconds) => Player.SeekAsync(seconds);
+
+    /// <summary>The program with the changes made on the treadmill console, same id so that it replaces the original.</summary>
+    private RideProgram AdjustedProgram() => RideAdjustment.ApplyAll(_program!, _engine.Adjustments);
+
+    private Task DownloadAdjustedAsync() => DownloadAsync(AdjustedProgram());
+
+    private async Task DownloadAsync(RideProgram program)
+    {
+        _files ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/files.js");
+        await _files.InvokeVoidAsync("downloadText", $"{program.Id}.json", ProgramParser.Serialize(program));
+    }
+
+    /// <summary>Free ride: the treadmill speed and incline follow the video time, beyond ads and pauses.</summary>
+    private void Record()
+    {
+        if (_program is not null || _videoId is null || !IsRecording || Treadmill.State != TreadmillState.Connected
+            || Treadmill.LastData is not { SpeedKmh: > 0 and var speed } data)
+            return; // a stopped belt is not part of the ride
+
+        _recorder ??= new RideRecorder(Treadmill.SpeedRange?.Step is > 0 and var s ? s : 0.1,
+                                       Treadmill.InclineRange?.Step is > 0 and var i ? i : 1.0);
+        _recorder.Observe(_position, _duration, speed, data.InclinePercent ?? 0);
+    }
+
+    /// <summary>The recorded ride, named after the video.</summary>
+    private async Task<RideProgram> RecordedAsync()
+    {
+        var now = Time.GetLocalNow();
+        var title = (await Player.GetTitleAsync()).Trim();
+        if (title.Length == 0)
+            title = L["RecordedRideTitle", now.ToString("d")];
+        var id = ProgramDraft.Slugify(title);
+        return _recorder!.ToProgram(id.Length > 0 ? id : $"course-{now:yyyyMMdd-HHmm}", title, _videoId!);
+    }
+
+    private async Task DownloadRecordingAsync()
+    {
+        var revision = _recorder!.Revision;
+        await DownloadAsync(await RecordedAsync());
+        _downloadedRevision = revision;
+    }
+
+    private async Task SaveRecordingAsync()
+    {
+        var revision = _recorder!.Revision;
+        var result = await Store.ImportAsync(ProgramParser.Serialize(await RecordedAsync()));
+        if (result.IsValid)
+            _savedRevision = revision;
+        else
+            _error = L["InvalidProgram"];
+    }
+
+    private async Task SaveAdjustedAsync()
+    {
+        var result = await Store.ImportAsync(ProgramParser.Serialize(AdjustedProgram()));
+        if (result.IsValid)
+            _adjustedSaved = true;
+        else
+            _error = L["InvalidProgram"];
+    }
 
     private async Task ToggleFullscreenAsync()
     {
@@ -234,6 +350,7 @@
 
                 _position = await Player.GetCurrentTimeAsync();
                 _duration = await Player.GetDurationAsync();
+                Record();
                 StateHasChanged();
             }
         }
@@ -282,11 +399,13 @@
         _engine.Changed -= OnChanged;
         _engine.WarningRaised -= OnWarning;
         await _engine.DisposeAsync();
-        if (_ui is not null)
+        foreach (var module in new[] { _ui, _files })
         {
+            if (module is null)
+                continue;
             try
             {
-                await _ui.DisposeAsync();
+                await module.DisposeAsync();
             }
             catch (JSDisconnectedException)
             {

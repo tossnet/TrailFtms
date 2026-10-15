@@ -67,8 +67,11 @@
     min-width: 0;
 }
 
+    /* Read from a distance while running: as large as the live values. */
     .metric.next {
         grid-column: 1 / -1;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--tf-ride-border);
     }
 
 .label {
@@ -87,8 +90,19 @@
         font-size: 0.45em;
     }
 
+.metric.next .label {
+    font-size: 1.1rem;
+}
+
 .metric.next .value {
-    font-size: clamp(1.2rem, 2.4vw, 1.6rem);
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 0.75rem;
+}
+
+.metric.next .target {
+    font-size: clamp(1.3rem, 2.6vw, 2rem);
+    font-weight: 600;
 }
 
 .target {
@@ -152,7 +166,7 @@
         font-size: clamp(1.6rem, 6vw, 2.6rem);
     }
 
-    .metric.next .value {
-        font-size: clamp(1.2rem, 4.5vw, 1.8rem);
+    .metric.next .target {
+        font-size: clamp(1.3rem, 5vw, 2.2rem);
     }
 }

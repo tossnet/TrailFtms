@@ -270,6 +270,9 @@
   <data name="RideStatus_Idle" xml:space="preserve">
     <value>En attente</value>
   </data>
+  <data name="AdPlaying" xml:space="preserve">
+    <value>Publicité, allure conservée</value>
+  </data>
   <data name="RideStatus_Running" xml:space="preserve">
     <value>Synchro active</value>
   </data>
@@ -290,6 +293,18 @@
   </data>
   <data name="Halt_ConnectionLost" xml:space="preserve">
     <value>Connexion au tapis perdue : la synchro est arrêtée et aucune commande ne sera envoyée.</value>
+  </data>
+  <data name="RideAdjusted" xml:space="preserve">
+    <value>Tu as ajusté la vitesse ou la pente {0} fois depuis le tapis. Télécharge le programme ajusté pour garder ces réglages.</value>
+  </data>
+  <data name="AdjustedSaved" xml:space="preserve">
+    <value>Programme ajusté enregistré dans ce navigateur, il remplace l'original.</value>
+  </data>
+  <data name="DownloadAdjusted" xml:space="preserve">
+    <value>Télécharger le programme ajusté</value>
+  </data>
+  <data name="SaveAdjusted" xml:space="preserve">
+    <value>Enregistrer dans mes programmes</value>
   </data>
   <data name="RideWarning_CommandRejected" xml:space="preserve">
     <value>Le tapis a refusé une consigne.</value>
@@ -467,5 +482,26 @@
   </data>
   <data name="Home" xml:space="preserve">
     <value>Accueil</value>
+  </data>
+  <data name="RecordHint" xml:space="preserve">
+    <value>Lance la vidéo et cours à ton rythme : ta vitesse et ta pente sont enregistrées. STOP termine la course et télécharge le programme.</value>
+  </data>
+  <data name="RecordNeedsTreadmill" xml:space="preserve">
+    <value>Tapis non connecté : connecte-le depuis l'accueil pour enregistrer ta course.</value>
+  </data>
+  <data name="Recording" xml:space="preserve">
+    <value>Enregistrement en cours : {0} points.</value>
+  </data>
+  <data name="RecordingDone" xml:space="preserve">
+    <value>Course enregistrée : {0} points. Relance la vidéo pour continuer.</value>
+  </data>
+  <data name="RecordingSaved" xml:space="preserve">
+    <value>Course enregistrée dans tes programmes.</value>
+  </data>
+  <data name="DownloadRecording" xml:space="preserve">
+    <value>Télécharger le programme</value>
+  </data>
+  <data name="RecordedRideTitle" xml:space="preserve">
+    <value>Course du {0}</value>
   </data>
 </root>

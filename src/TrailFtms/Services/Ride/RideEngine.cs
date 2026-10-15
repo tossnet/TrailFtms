@@ -40,6 +40,8 @@ public sealed class RideEngine : IAsyncDisposable
     internal static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(250);
     internal const int CooldownStepTicks = 8; // one cool-down step every 2 s
     private const double CooldownSpeedStep = 0.5;
+    /// <summary>A duration below this share of the ride video is an ad, not the video.</summary>
+    private const double AdDurationRatio = 0.5;
 
     private readonly IFtmsTreadmill _treadmill;
     private readonly IVideoPlayer _video;
@@ -52,6 +54,10 @@ public sealed class RideEngine : IAsyncDisposable
     private double? _sentSpeed;
     private double? _sentIncline;
     private int _cooldownTicks;
+    private double _videoDuration;
+    private readonly AdjustmentWatch _speedWatch = new();
+    private readonly AdjustmentWatch _inclineWatch = new();
+    private readonly List<RideAdjustment> _adjustments = [];
 
     public RideEngine(IFtmsTreadmill treadmill, IVideoPlayer video, TimeProvider? time = null)
     {
@@ -82,6 +88,12 @@ public sealed class RideEngine : IAsyncDisposable
 
     public bool IsActive => Status is RideStatus.Running or RideStatus.CoolingDown;
 
+    /// <summary>A YouTube ad is playing: the treadmill keeps its current pace.</summary>
+    public bool IsAdPlaying { get; private set; }
+
+    /// <summary>Changes made on the treadmill console while following the video, in ride order.</summary>
+    public IReadOnlyList<RideAdjustment> Adjustments => _adjustments;
+
     public event Action? Changed;
     public event Action<RideWarning>? WarningRaised;
 
@@ -89,13 +101,16 @@ public sealed class RideEngine : IAsyncDisposable
     public void Start(RideProgram program)
     {
         StopLoop();
+        if (!ReferenceEquals(program, Program))
+            _adjustments.Clear(); // resuming the same ride keeps them
         Program = program;
         Status = RideStatus.Running;
         HaltReason = HaltReason.None;
         SegmentIndex = -1;
         TargetSpeed = TargetIncline = NextChangeIn = null;
         _sentSpeed = _sentIncline = null;
-        _beltStarted = _pauseApplied = _selfStopped = false;
+        _beltStarted = _pauseApplied = _selfStopped = IsAdPlaying = false;
+        _videoDuration = program.DurationSeconds;
 
         _loop = new CancellationTokenSource();
         _ = RunLoopAsync(_loop.Token);
@@ -137,6 +152,11 @@ public sealed class RideEngine : IAsyncDisposable
                 await CoolDownAsync();
                 return;
             }
+
+            IsAdPlaying = _video.State is VideoState.Playing or VideoState.Buffering or VideoState.Ended
+                && await IsAdAsync();
+            if (IsAdPlaying)
+                return;
 
             switch (_video.State)
             {
@@ -197,6 +217,33 @@ public sealed class RideEngine : IAsyncDisposable
         }
         await SetSpeedAsync(TargetSpeed.Value);
         await SetInclineAsync(TargetIncline.Value);
+        WatchAdjustments();
+    }
+
+    /// <summary>
+    /// Ads play inside the same player: time and duration become the ad's, which would replay the
+    /// first segments (and an ad ending would look like the video ending). Ads are much shorter than
+    /// a ride video, so the longest duration seen is the video and a much shorter one is an ad.
+    /// </summary>
+    private async Task<bool> IsAdAsync()
+    {
+        var duration = await _video.GetDurationAsync();
+        if (duration <= 0)
+            return false; // not known yet
+        _videoDuration = Math.Max(_videoDuration, duration);
+        return duration < _videoDuration * AdDurationRatio;
+    }
+
+    private void WatchAdjustments()
+    {
+        var data = _treadmill.LastData;
+        if (data?.SpeedKmh is { } speed && _speedWatch.Observe(VideoTime, speed, SpeedStep) is { } speedChange)
+        {
+            var value = Settings.SpeedFactor > 0 ? speedChange.Value / Settings.SpeedFactor : speedChange.Value;
+            _adjustments.Add(new(speedChange.T, AdjustedValue.Speed, Math.Round(value, 1)));
+        }
+        if (data?.InclinePercent is { } incline && _inclineWatch.Observe(VideoTime, incline, InclineStep) is { } inclineChange)
+            _adjustments.Add(new(inclineChange.T, AdjustedValue.Incline, inclineChange.Value));
     }
 
     /// <summary>
@@ -222,12 +269,17 @@ public sealed class RideEngine : IAsyncDisposable
 
     private double InclineStep => _treadmill.InclineRange?.Step is > 0 and var s ? s : 1.0;
 
+    private double SpeedStep => _treadmill.SpeedRange?.Step is > 0 and var s ? s : 0.1;
+
     private async Task ApplyPauseAsync()
     {
         if (_pauseApplied || !_beltStarted)
             return;
 
         _pauseApplied = true;
+        // Changes made while the video is paused (slowing down to drink...) are not part of the ride.
+        _speedWatch.Rearm();
+        _inclineWatch.Rearm();
         switch (Settings.PauseBehavior)
         {
             case PauseBehavior.SlowDown:
@@ -275,6 +327,7 @@ public sealed class RideEngine : IAsyncDisposable
         if (speed == _sentSpeed)
             return Task.CompletedTask;
         _sentSpeed = speed;
+        _speedWatch.Expect(speed);
         return SendAsync(_treadmill.SetSpeedAsync(speed));
     }
 
@@ -283,6 +336,7 @@ public sealed class RideEngine : IAsyncDisposable
         if (incline == _sentIncline)
             return Task.CompletedTask;
         _sentIncline = incline;
+        _inclineWatch.Expect(incline);
         return SendAsync(_treadmill.SetInclineAsync(incline));
     }
 
