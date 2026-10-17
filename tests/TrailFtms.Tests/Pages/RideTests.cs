@@ -332,4 +332,42 @@ public sealed class RideTests
 
         CollectionAssert.AreEqual(new byte[] { 0x08, 0x01 }, ctx.Ftms.Writes[^1]);
     }
+
+    [TestMethod]
+    public async Task Calories_are_estimated_from_the_profile()
+    {
+        var ctx = new AppTestContext();
+        using var _ = ctx;
+        await ctx.Ftms.Treadmill.ConnectAsync();
+        var settings = ctx.Services.GetRequiredService<TrailFtms.Services.Settings.SettingsStore>();
+        await settings.SaveAsync(new() { Body = new() { WeightKg = 70 } });
+        ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("ride?v=KiEN4HxM4ic");
+        var cut = ctx.Render<Ride>();
+
+        // 10 km/h, one notification per second for a minute: 12.9 kcal (ACSM running, 70 kg).
+        for (var t = 0; t <= 60; t++)
+        {
+            await cut.InvokeAsync(() => ctx.Ftms.Treadmill.OnTreadmillData([0x00, 0x00, .. BitConverter.GetBytes((ushort)1000)]));
+            ctx.Time.Advance(TimeSpan.FromSeconds(1));
+        }
+
+        cut.WaitForAssertion(() => Assert.AreEqual("13 kcal", cut.Find(".metric.calories .value").TextContent));
+        Assert.AreEqual("Estimation", cut.Find(".metric.calories .target").TextContent);
+    }
+
+    [TestMethod]
+    public async Task Treadmill_calories_are_shown_without_profile()
+    {
+        var ctx = new AppTestContext();
+        using var _ = ctx;
+        await ctx.Ftms.Treadmill.ConnectAsync();
+        ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("ride?v=KiEN4HxM4ic");
+        var cut = ctx.Render<Ride>();
+
+        // Speed and expended energy (bit 7): total 42 kcal, per hour and per minute not available.
+        await cut.InvokeAsync(() => ctx.Ftms.Treadmill.OnTreadmillData([0x80, 0x00, 0xE8, 0x03, 42, 0x00, 0xFF, 0xFF, 0xFF]));
+
+        Assert.AreEqual("42 kcal", cut.Find(".metric.calories .value").TextContent);
+        Assert.AreEqual("Valeur du tapis", cut.Find(".metric.calories .target").TextContent);
+    }
 }

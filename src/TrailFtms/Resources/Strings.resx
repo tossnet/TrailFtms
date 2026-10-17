@@ -504,4 +504,37 @@
   <data name="RecordedRideTitle" xml:space="preserve">
     <value>Course du {0}</value>
   </data>
+  <data name="Calories" xml:space="preserve">
+    <value>Calories</value>
+  </data>
+  <data name="EstimateCalories" xml:space="preserve">
+    <value>Estimer les calories dépensées</value>
+  </data>
+  <data name="WeightKg" xml:space="preserve">
+    <value>Poids (kg)</value>
+  </data>
+  <data name="Age" xml:space="preserve">
+    <value>Âge</value>
+  </data>
+  <data name="Sex_Unspecified" xml:space="preserve">
+    <value>Non précisé</value>
+  </data>
+  <data name="Sex_Female" xml:space="preserve">
+    <value>Femme</value>
+  </data>
+  <data name="Sex_Male" xml:space="preserve">
+    <value>Homme</value>
+  </data>
+  <data name="CaloriesHelp" xml:space="preserve">
+    <value>Estimation à partir de la vitesse, de l'inclinaison et du poids (équations ACSM). Le sexe et l'âge affinent le calcul quand la fréquence cardiaque est transmise. Ces données restent dans ce navigateur. Comme sur la console du tapis, l'écart avec la dépense réelle peut atteindre 15 à 20 %.</value>
+  </data>
+  <data name="CaloriesEstimated" xml:space="preserve">
+    <value>Estimation</value>
+  </data>
+  <data name="CaloriesMachine" xml:space="preserve">
+    <value>Tapis : {0}</value>
+  </data>
+  <data name="CaloriesFromMachine" xml:space="preserve">
+    <value>Valeur du tapis</value>
+  </data>
 </root>

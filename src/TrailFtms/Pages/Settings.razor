@@ -55,6 +55,27 @@
             </div>
         </WinOldFrame>
 
+        <WinOldFrame Label="@L["Calories"]">
+            <div class="wo-col wo-gap-8">
+                <WinOldCheckBox Label="@L["EstimateCalories"]" Value="_settings.Body is not null" ValueChanged="ToggleBodyAsync" />
+                <div class="wo-row wo-gap-16 limit">
+                    <WinOldNumberBox TValue="double" Label="@L["WeightKg"]" Min="30" Max="200" Step="1"
+                                     Disabled="_settings.Body is null" Value="Body.WeightKg"
+                                     ValueChanged="v => SaveBodyAsync(Body with { WeightKg = Math.Clamp(v, 30, 200) })" />
+                    <WinOldNumberBox TValue="int" Label="@L["Age"]" Min="10" Max="100" Step="1"
+                                     Disabled="_settings.Body is null" Value="Body.Age"
+                                     ValueChanged="v => SaveBodyAsync(Body with { Age = Math.Clamp(v, 10, 100) })" />
+                </div>
+                <WinOldOptionButtonGroup T="Sex" Value="Body.Sex" ValueChanged="v => SaveBodyAsync(Body with { Sex = v })">
+                    @foreach (var sex in Enum.GetValues<Sex>())
+                    {
+                        <WinOldOptionButton T="Sex" Value="sex" Label="@L[$"Sex_{sex}"]" Disabled="_settings.Body is null" />
+                    }
+                </WinOldOptionButtonGroup>
+                <WinOldLabel Class="help">@L["CaloriesHelp"]</WinOldLabel>
+            </div>
+        </WinOldFrame>
+
         <div>
             <WinOldButton OnClick="@(() => Navigation.NavigateTo(""))">@L["Back"]</WinOldButton>
         </div>
@@ -83,6 +104,15 @@
 
     private Task ToggleMaxInclineAsync(bool on) =>
         SaveAsync(_settings! with { MaxIncline = on ? DefaultMaxIncline : null });
+
+    /// <summary>The saved profile, or the defaults shown while the estimate is off.</summary>
+    private BodyProfile Body => _settings!.Body ?? new();
+
+    private Task ToggleBodyAsync(bool on) =>
+        SaveAsync(_settings! with { Body = on ? Body : null });
+
+    private Task SaveBodyAsync(BodyProfile body) =>
+        SaveAsync(_settings! with { Body = body });
 
     private async Task SaveAsync(AppSettings settings)
     {

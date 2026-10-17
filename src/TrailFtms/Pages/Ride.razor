@@ -118,6 +118,22 @@
                     <span class="target">@L["Target"] @incline.ToString("0.#")</span>
                 }
             </div>
+            @if (_calories.Profile is not null)
+            {
+                <div class="metric calories">
+                    <span class="label">@L["Calories"]</span>
+                    <span class="value">@_calories.TotalKcal.ToString("0")<small> kcal</small></span>
+                    <span class="target">@(_data?.TotalEnergyKcal is { } machine ? L["CaloriesMachine", machine] : L["CaloriesEstimated"])</span>
+                </div>
+            }
+            else if (_data?.TotalEnergyKcal is { } machineKcal)
+            {
+                <div class="metric calories">
+                    <span class="label">@L["Calories"]</span>
+                    <span class="value">@machineKcal<small> kcal</small></span>
+                    <span class="target">@L["CaloriesFromMachine"]</span>
+                </div>
+            }
             @if (_engine.IsActive)
             {
                 <div class="metric next">
@@ -158,6 +174,7 @@
     private const double ProfileWindowSeconds = 5 * 60;
 
     private RideEngine _engine = null!;
+    private readonly CalorieEstimator _calories = new();
     private RideProgram? _program;
     private TreadmillData? _data;
     private string? _link;
@@ -166,6 +183,7 @@
     private string? _warning;
     private double _position;
     private double _duration;
+    private long _openedAt;
     private bool _adjustedSaved;
     private RideRecorder? _recorder;
     private int? _downloadedRevision;
@@ -203,6 +221,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _openedAt = Time.GetTimestamp();
         _engine = new RideEngine(Treadmill, Player, Time);
         _engine.Changed += OnChanged;
         _engine.WarningRaised += OnWarning;
@@ -215,6 +234,7 @@
 
         await Settings.LoadAsync();
         _engine.Settings = Settings.Current.Ride;
+        _calories.Profile = Settings.Current.Body;
 
         if (ProgramId is null)
         {
@@ -365,12 +385,14 @@
     private void OnData(TreadmillData data)
     {
         _data = data;
+        _calories.Observe(Time.GetElapsedTime(_openedAt).TotalSeconds, data);
         InvokeAsync(StateHasChanged);
     }
 
     private void OnSettingsChanged()
     {
         _engine.Settings = Settings.Current.Ride;
+        _calories.Profile = Settings.Current.Body;
         InvokeAsync(StateHasChanged);
     }
 

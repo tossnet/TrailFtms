@@ -12,4 +12,7 @@ public sealed record AppSettings
 
     /// <summary>Incline ceiling in %, null for the machine limit only.</summary>
     public double? MaxIncline { get; init; }
+
+    /// <summary>Profile for the calorie estimate, null to show the treadmill value only.</summary>
+    public BodyProfile? Body { get; init; }
 }
