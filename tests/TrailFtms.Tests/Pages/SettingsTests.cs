@@ -35,4 +35,19 @@ public sealed class SettingsTests
 
         Assert.AreEqual(PauseBehavior.PauseTreadmill, ctx.Services.GetRequiredService<SettingsStore>().Current.Ride.PauseBehavior);
     }
+
+    [TestMethod]
+    public void Calorie_profile_is_saved_once_enabled()
+    {
+        using var ctx = new AppTestContext();
+        var cut = ctx.Render<TrailFtms.Pages.Settings>();
+        cut.WaitForAssertion(() => Assert.IsNotEmpty(cut.FindAll("input[type=checkbox]")));
+        var store = ctx.Services.GetRequiredService<SettingsStore>();
+        Assert.IsNull(store.Current.Body);
+
+        cut.FindAll("input[type=checkbox]")[2].Input(true); // limits first, then the calorie estimate
+        cut.FindAll("input[type=radio]")[5].Change(true); // after PauseBehavior: Unspecified, Female, Male
+
+        Assert.AreEqual(new BodyProfile { Sex = Sex.Male }, store.Current.Body);
+    }
 }
