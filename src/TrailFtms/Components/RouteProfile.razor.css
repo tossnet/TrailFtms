@@ -1,0 +1,38 @@
+.route {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--tf-profile-bg);
+    border-radius: 4px;
+}
+
+.area {
+    fill: var(--tf-speed-0);
+    opacity: 0.35;
+}
+
+.curve {
+    fill: none;
+    stroke: var(--tf-profile-line);
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+
+.pole {
+    stroke: var(--tf-profile-cursor);
+    stroke-width: 1.5;
+}
+
+.flag.start .banner {
+    fill: var(--tf-flag-start);
+}
+
+.flag.finish .banner {
+    fill: var(--tf-flag-finish);
+}
+
+.position {
+    fill: var(--tf-accent);
+    stroke: var(--tf-profile-bg);
+    stroke-width: 1.5;
+}

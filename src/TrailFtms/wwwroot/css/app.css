@@ -12,6 +12,8 @@
     --tf-profile-line: #5c5c5c;
     --tf-profile-cursor: #1b1b1b;
     --tf-profile-hover: rgba(0, 0, 0, 0.08);
+    --tf-flag-start: #c42b1c;
+    --tf-flag-finish: #107c10;
     /* Speed bands (walk, brisk walk, jog, run): one blue ramp, faster = more contrast.
        Ordinal ramp validated against the profile background in each theme. */
     --tf-speed-0: #86b6ef;
@@ -37,6 +39,8 @@
         --tf-profile-line: #b5b5b5;
         --tf-profile-cursor: #ffffff;
         --tf-profile-hover: rgba(255, 255, 255, 0.1);
+        --tf-flag-start: #ff6b5e;
+        --tf-flag-finish: #6ccb5f;
         --tf-speed-0: #256abf;
         --tf-speed-1: #3987e5;
         --tf-speed-2: #6da7ec;

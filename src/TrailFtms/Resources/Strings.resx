@@ -405,6 +405,9 @@
   <data name="Pace" xml:space="preserve">
     <value>Allure</value>
   </data>
+  <data name="Remaining" xml:space="preserve">
+    <value>Temps restant</value>
+  </data>
   <data name="Next" xml:space="preserve">
     <value>Ensuite</value>
   </data>
@@ -413,6 +416,9 @@
   </data>
   <data name="InclineProfile" xml:space="preserve">
     <value>Profil d'inclinaison du parcours</value>
+  </data>
+  <data name="RouteOverview" xml:space="preserve">
+    <value>Parcours complet, du départ à l'arrivée</value>
   </data>
   <data name="ConnectHint" xml:space="preserve">
     <value>Vérifie que le tapis est allumé et qu'il n'est pas déjà connecté à un autre appareil (téléphone, autre onglet), puis réessaie.</value>

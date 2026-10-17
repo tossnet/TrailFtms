@@ -134,13 +134,20 @@
                     <span class="target">@L["CaloriesFromMachine"]</span>
                 </div>
             }
+            @if (ProfileDuration > 0)
+            {
+                <div class="metric remaining">
+                    <span class="label">@L["Remaining"]</span>
+                    <span class="value">@Formatting.Time(Math.Ceiling(ProfileDuration - _position))</span>
+                </div>
+            }
             @if (_engine.IsActive)
             {
                 <div class="metric next">
                     <span class="label">@L["Next"]</span>
                     @if (NextSegment is { } next)
                     {
-                        <span class="value"><span>@Treadmill.ClampIncline(next.Incline).ToString("0.#")<small> %</small></span> <span>@Treadmill.ClampSpeed(next.Speed * Factor).ToString("0.0")<small> km/h</small></span></span>
+                        <span class="value"><span>@Treadmill.ClampSpeed(next.Speed * Factor).ToString("0.0")<small> km/h</small></span> <span>@Treadmill.ClampIncline(next.Incline).ToString("0.#")<small> %</small></span></span>
                         <span class="target">@L["NextIn", Formatting.Time(Math.Ceiling(_engine.NextChangeIn ?? 0))]</span>
                     }
                     else
@@ -150,6 +157,11 @@
                 </div>
             }
         </div>
+
+        @if (_program is not null)
+        {
+            <RouteProfile Program="_program" Duration="ProfileDuration" Position="_position" AriaLabel="@L["RouteOverview"]" />
+        }
 
         <div class="tools">
             <WinOldButton OnClick="ToggleFullscreenAsync"><BiIcon Name="BiIconName.ArrowsFullscreen" /> @L["Fullscreen"]</WinOldButton>

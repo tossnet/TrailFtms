@@ -139,7 +139,9 @@ public sealed class RideTests
         Assert.AreEqual("Consigne 3,0", targets[0]);
         Assert.AreEqual("Consigne 3", targets[1]);
         Assert.AreEqual("dans 0:06", targets[2]); // next: 1 % at 0:50
-        StringAssert.Contains(cut.Find(".metric.next .value").TextContent, "1 %");
+        StringAssert.Matches(cut.Find(".metric.next .value").TextContent, new System.Text.RegularExpressions.Regex(@"km/h.*1 %"));
+        ctx.Time.Advance(TimeSpan.FromMilliseconds(250)); // the page reads the position
+        cut.WaitForAssertion(() => Assert.AreEqual("51:08", cut.Find(".metric.remaining .value").TextContent)); // 51:52 - 0:44
         StringAssert.Contains(cut.Markup, "Synchro active");
         CollectionAssert.AreEqual(new byte[] { 0x07 }, ctx.Ftms.Writes[0]);
     }
@@ -204,15 +206,15 @@ public sealed class RideTests
     }
 
     [TestMethod]
-    public async Task Panel_only_shows_speed_incline_and_next_change()
+    public async Task Panel_only_shows_speed_incline_remaining_time_and_next_change()
     {
         var (ctx, cut) = await RenderProgramAsync(connected: true);
         using var _ = ctx;
         ctx.Video.CurrentTime = 45;
         await cut.InvokeAsync(() => ctx.Video.SetState(VideoState.Playing));
 
-        cut.WaitForAssertion(() => Assert.HasCount(3, cut.FindAll(".metric")));
-        CollectionAssert.AreEqual(new[] { "Vitesse", "Inclinaison", "Ensuite" },
+        cut.WaitForAssertion(() => Assert.HasCount(4, cut.FindAll(".metric")));
+        CollectionAssert.AreEqual(new[] { "Vitesse", "Inclinaison", "Temps restant", "Ensuite" },
             cut.FindAll(".metric .label").Select(l => l.TextContent).ToArray());
         Assert.IsEmpty(cut.FindAll(".pace-value"));
     }

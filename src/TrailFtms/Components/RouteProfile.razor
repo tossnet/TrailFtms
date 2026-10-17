@@ -1,0 +1,119 @@
+@* Whole route at a glance, from the start (red flag) to the finish (green flag): the incline curve
+   over the duration, with a dot at the current position. Unlike ProgramTimeline, it never scrolls. *@
+
+<svg class="route" viewBox="0 0 @Width @Height" role="img" aria-label="@AriaLabel">
+    @if (_points.Count > 0)
+    {
+        <path class="area" d="@_area" />
+        <polyline class="curve" points="@_curve" />
+        <g class="flag start">
+            <line class="pole" x1="@F(_points[0].X)" y1="@F(_points[0].Y)" x2="@F(_points[0].X)" y2="@F(_points[0].Y - FlagHeight)" />
+            <polygon class="banner" points="@Banner(_points[0])" />
+        </g>
+        <g class="flag finish">
+            <line class="pole" x1="@F(_points[^1].X)" y1="@F(_points[^1].Y)" x2="@F(_points[^1].X)" y2="@F(_points[^1].Y - FlagHeight)" />
+            <polygon class="banner" points="@Banner(_points[^1])" />
+        </g>
+        <circle class="position" cx="@F(PositionPoint.X)" cy="@F(PositionPoint.Y)" r="4" />
+    }
+</svg>
+
+@code {
+    private const double Width = 300;
+    private const double Height = 90;
+    private const double LeftPadding = 6;
+    private const double BottomPadding = 4;
+    private const double FlagHeight = 24;
+    private const double BannerWidth = 14;
+    private const double BannerHeight = 9;
+    private const double TopPadding = FlagHeight + 2; // room for a flag on the highest climb
+    private const double RightPadding = BannerWidth + 2; // room for the finish banner
+
+    private readonly record struct Point(double X, double Y);
+
+    private List<Point> _points = [];
+    private string _curve = "";
+    private string _area = "";
+    private RideProgram? _drawnProgram;
+    private double _drawnTotal;
+
+    [Parameter, EditorRequired]
+    public RideProgram Program { get; set; } = null!;
+
+    /// <summary>Total duration in seconds (program duration, else video duration).</summary>
+    [Parameter]
+    public double Duration { get; set; }
+
+    /// <summary>Current video time in seconds.</summary>
+    [Parameter]
+    public double Position { get; set; }
+
+    [Parameter]
+    public string? AriaLabel { get; set; }
+
+    private double Total => Duration > 0 ? Duration : (Program.Segments.Count > 0 ? Program.Segments[^1].T + 60 : 60);
+
+    private double X(double t) => LeftPadding + Math.Clamp(t / Total, 0, 1) * (Width - LeftPadding - RightPadding);
+
+    // Point of the curve at the position, interpolated between the two points around it.
+    private Point PositionPoint
+    {
+        get
+        {
+            var x = X(Position);
+            var i = 1;
+            while (i < _points.Count - 1 && _points[i].X < x)
+                i++;
+            var (a, b) = (_points[Math.Max(i - 1, 0)], _points[i]);
+            return b.X > a.X ? new Point(x, a.Y + (b.Y - a.Y) * (x - a.X) / (b.X - a.X)) : b;
+        }
+    }
+
+    // The curve depends on the program and the duration only: the position just moves the dot.
+    protected override void OnParametersSet()
+    {
+        var total = Total;
+        if (ReferenceEquals(Program, _drawnProgram) && total == _drawnTotal)
+            return;
+        _drawnProgram = Program;
+        _drawnTotal = total;
+        Draw(total);
+    }
+
+    private void Draw(double total)
+    {
+        var segments = Program.Segments;
+        if (segments.Count == 0)
+        {
+            _points = [];
+            _curve = _area = "";
+            return;
+        }
+
+        var low = Math.Min(0, segments.Min(s => s.Incline));
+        var high = Math.Max(1, segments.Max(s => s.Incline));
+        double Y(double incline) => Height - BottomPadding - (incline - low) / (high - low) * (Height - BottomPadding - TopPadding);
+
+        // A curve through the middle of each segment, from the start to the finish at the inclines in force there.
+        _points = [new Point(X(0), Y(segments[0].Incline))];
+        for (var i = 0; i < segments.Count; i++)
+        {
+            var end = i + 1 < segments.Count ? segments[i + 1].T : total;
+            if (end > segments[i].T)
+                _points.Add(new Point(X((segments[i].T + end) / 2), Y(segments[i].Incline)));
+        }
+        _points.Add(new Point(X(total), Y(segments[^1].Incline)));
+
+        _curve = string.Join(' ', _points.Select(p => $"{F(p.X)},{F(p.Y)}"));
+        _area = $"M{F(_points[0].X)},{F(Height)} L{_curve.Replace(' ', 'L')} L{F(_points[^1].X)},{F(Height)} Z";
+    }
+
+    // Triangle at the top of the pole, pointing right.
+    private static string Banner(Point foot)
+    {
+        var top = foot.Y - FlagHeight;
+        return $"{F(foot.X)},{F(top)} {F(foot.X + BannerWidth)},{F(top + BannerHeight / 2)} {F(foot.X)},{F(top + BannerHeight)}";
+    }
+
+    private static string F(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+}
