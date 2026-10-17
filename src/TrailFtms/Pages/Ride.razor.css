@@ -68,7 +68,8 @@
 }
 
     /* Read from a distance while running: as large as the live values. */
-    .metric.next {
+    .metric.next,
+    .metric.remaining {
         grid-column: 1 / -1;
         padding-top: 0.75rem;
         border-top: 1px solid var(--tf-ride-border);
@@ -80,17 +81,18 @@
 }
 
 .value {
-    font-size: clamp(1.5rem, 3.2vw, 2.4rem);
+    font-size: clamp(2rem, 4vw, 3.2rem);
     line-height: 1.1;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
 
     .value small {
-        font-size: 0.45em;
+        font-size: 0.4em;
     }
 
-.metric.next .label {
+.metric.next .label,
+.metric.remaining .label {
     font-size: 1.1rem;
 }
 
@@ -163,7 +165,7 @@
     }
 
     .value {
-        font-size: clamp(1.6rem, 6vw, 2.6rem);
+        font-size: clamp(2.2rem, 8vw, 3.6rem);
     }
 
     .metric.next .target {

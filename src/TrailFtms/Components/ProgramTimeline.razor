@@ -1,5 +1,5 @@
 @* Incline profile of the route with the current position. The height is the incline, the fill color the
-   speed band (walk, brisk walk, jog, run). With a Window, only that many seconds are shown and the view
+   speed band, from the slowest to the fastest quarter of the program. With a Window, only that many seconds are shown and the view
    scrolls with the video (cursor near the left, so the coming terrain is visible).
    A tap on a segment seeks to its start. *@
 
@@ -26,9 +26,9 @@
     @if (_parts.Count > 0)
     {
         <div class="legend" aria-hidden="true">
-            @for (var band = 0; band < SpeedBandLabels.Length; band++)
+            @for (var band = 0; band < _bandLabels.Length; band++)
             {
-                <span class="legend-item"><span class="swatch speed-@band"></span>@SpeedBandLabels[band]</span>
+                <span class="legend-item"><span class="swatch speed-@band"></span>@_bandLabels[band]</span>
             }
         </div>
     }
@@ -41,12 +41,14 @@
     private const double TopPadding = 20; // room for the legend and the times above the highest climb
     private const double CursorRatio = 0.2; // position of the cursor in a scrolling window
 
-    // Speed bands in km/h: walk, brisk walk, jog, run.
-    private static readonly double[] SpeedBandLimits = [4, 6, 8];
-    private static readonly string[] SpeedBandLabels = ["< 4", "4-6", "6-8", "8+ km/h"];
+    private const int BandCount = 4;
 
     private readonly record struct Part(double X, double W, double Y, int Band, ProgramSegment Segment);
 
+    // Speed bands fitted to the program (quartiles of the time spent at each speed), so the colors
+    // show its variations whatever its pace: a slow hike and a run both use the four colors.
+    private double[] _bandLimits = [];
+    private string[] _bandLabels = [];
     private string _line = "";
     private List<Part> _parts = [];
     private RideProgram? _drawnProgram;
@@ -91,6 +93,8 @@
         if (ReferenceEquals(Program, _drawnProgram) && total == _drawnTotal && start == _start && span == _span)
             return;
 
+        if (!ReferenceEquals(Program, _drawnProgram) || total != _drawnTotal)
+            ComputeBands(total);
         _drawnProgram = Program;
         _drawnTotal = total;
         _windowed = windowed;
@@ -130,10 +134,49 @@
         _line = line.ToString();
     }
 
-    private static int SpeedBand(double speed)
+    private void ComputeBands(double total)
+    {
+        var segments = Program.Segments;
+        if (segments.Count == 0)
+        {
+            _bandLimits = [];
+            _bandLabels = [];
+            return;
+        }
+
+        // Time spent at each speed, slowest first; a limit is the speed reached after each quarter of the time.
+        var weighted = segments
+            .Select((s, i) => (Speed: Math.Round(s.Speed, 1), Seconds: Math.Max((i + 1 < segments.Count ? segments[i + 1].T : total) - s.T, 0)))
+            .GroupBy(w => w.Speed, (speed, ws) => (Speed: speed, Seconds: ws.Sum(w => w.Seconds)))
+            .OrderBy(w => w.Speed)
+            .ToList();
+        var totalSeconds = weighted.Sum(w => w.Seconds);
+        var limits = new List<double>();
+        double cumulated = 0;
+        var quarter = 1;
+        foreach (var (speed, seconds) in weighted)
+        {
+            // Speeds below this one already fill the quarter: it opens the next band (once, never the slowest).
+            if (quarter < BandCount && cumulated > 0 && cumulated >= totalSeconds * quarter / BandCount)
+            {
+                limits.Add(speed);
+                while (quarter < BandCount && cumulated >= totalSeconds * quarter / BandCount)
+                    quarter++;
+            }
+            cumulated += seconds;
+        }
+        _bandLimits = [.. limits];
+
+        string S(double v) => v.ToString("0.#");
+        _bandLabels = limits.Count == 0
+            ? [$"{S(weighted[0].Speed)} km/h"]
+            : [$"< {S(limits[0])}", .. limits.Skip(1).Select((l, i) => $"{S(limits[i])}-{S(l)}"), $"{S(limits[^1])}+ km/h"];
+    }
+
+    private int SpeedBand(double speed)
     {
         var band = 0;
-        while (band < SpeedBandLimits.Length && speed >= SpeedBandLimits[band])
+        while (band < _bandLimits.Length && Math.Round(speed, 1) >= _bandLimits[band])
             band++;
         return band;
     }

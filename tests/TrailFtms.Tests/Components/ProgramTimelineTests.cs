@@ -103,8 +103,38 @@ public sealed class ProgramTimelineTests
             new[] { "fill speed-0", "fill speed-1", "fill speed-2", "fill speed-3" },
             cut.FindAll("rect.fill").Select(r => r.ClassName).ToArray());
         Assert.AreEqual("1:40 · 2 % · 4,0 km/h", cut.FindAll("rect.hit title")[1].TextContent);
-        CollectionAssert.AreEqual(new[] { "< 4", "4-6", "6-8", "8+ km/h" },
+        CollectionAssert.AreEqual(new[] { "< 4", "4-7,9", "7,9-8", "8+ km/h" },
             cut.FindAll(".legend-item").Select(i => i.TextContent).ToArray());
+    }
+
+    [TestMethod]
+    public void Speed_bands_fit_a_slow_program()
+    {
+        using var ctx = new BunitContext();
+        // 1 min warm-up at 1 km/h, then a hike between 3 and 3.6 km/h: quartiles of the time spent at each speed.
+        var program = Program with
+        {
+            Segments = [new(0, 1, 0), new(60, 3, 2), new(400, 3.3, 4), new(800, 3, 1), new(1000, 3.6, 3), new(1300, 3.4, 0)],
+        };
+
+        var cut = ctx.Render<ProgramTimeline>(p => p.Add(c => c.Program, program).Add(c => c.Duration, 1600));
+
+        CollectionAssert.AreEqual(new[] { "< 3,3", "3,3-3,4", "3,4-3,6", "3,6+ km/h" },
+            cut.FindAll(".legend-item").Select(i => i.TextContent).ToArray());
+        CollectionAssert.AreEqual(
+            new[] { "fill speed-0", "fill speed-0", "fill speed-1", "fill speed-0", "fill speed-3", "fill speed-2" },
+            cut.FindAll("rect.fill").Select(r => r.ClassName).ToArray());
+    }
+
+    [TestMethod]
+    public void Constant_speed_has_a_single_band()
+    {
+        using var ctx = new BunitContext();
+
+        var cut = ctx.Render<ProgramTimeline>(p => p.Add(c => c.Program, Program).Add(c => c.Duration, 1000));
+
+        CollectionAssert.AreEqual(new[] { "3 km/h" }, cut.FindAll(".legend-item").Select(i => i.TextContent).ToArray());
+        Assert.IsTrue(cut.FindAll("rect.fill").All(r => r.ClassName == "fill speed-0"));
     }
 
     [TestMethod]
