@@ -10,10 +10,24 @@
             <span class="metric-label">@L["Speed"]</span>
             <span class="metric-value">@Format(_data?.SpeedKmh, "0.0") <small>km/h</small></span>
         </div>
-        <div class="metric">
-            <span class="metric-label">@L["Incline"]</span>
-            <span class="metric-value">@Format(_data?.InclinePercent, "0.#") <small>%</small></span>
-        </div>
+        @if (IsBike)
+        {
+            <div class="metric">
+                <span class="metric-label">@L["Resistance"]</span>
+                <span class="metric-value">@(_data?.ResistanceLevel?.ToString() ?? "-")</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">@L["Cadence"]</span>
+                <span class="metric-value">@(_data?.CadenceRpm?.ToString() ?? "-") <small>rpm</small></span>
+            </div>
+        }
+        else
+        {
+            <div class="metric">
+                <span class="metric-label">@L["Incline"]</span>
+                <span class="metric-value">@Format(_data?.InclinePercent, "0.#") <small>%</small></span>
+            </div>
+        }
         <div class="metric">
             <span class="metric-label">@L["Distance"]</span>
             <span class="metric-value">@(_data?.TotalDistanceMeters?.ToString() ?? "-") <small>m</small></span>
@@ -24,25 +38,40 @@
         </div>
     </div>
 
-    <div class="control">
-        <span class="control-label">@L["Target"] @L["Speed"]</span>
-        <WinOldButton OnClick="() => ChangeSpeedAsync(-0.5)">@Delta(-0.5)</WinOldButton>
-        <WinOldButton OnClick="() => ChangeSpeedAsync(-0.1)">@Delta(-0.1)</WinOldButton>
-        <span class="target">@_targetSpeed.ToString("0.0") km/h</span>
-        <WinOldButton OnClick="() => ChangeSpeedAsync(0.1)">@Delta(0.1)</WinOldButton>
-        <WinOldButton OnClick="() => ChangeSpeedAsync(0.5)">@Delta(0.5)</WinOldButton>
-    </div>
+    @if (IsBike)
+    {
+        <div class="control">
+            <span class="control-label">@L["Target"] @L["Resistance"]</span>
+            <WinOldButton OnClick="() => ChangeInclineAsync(-InclineStep)">-1</WinOldButton>
+            <span class="target">@L["Level", DomyosProtocol.LevelFor(_targetIncline)]</span>
+            <WinOldButton OnClick="() => ChangeInclineAsync(InclineStep)">+1</WinOldButton>
+        </div>
+    }
+    else
+    {
+        <div class="control">
+            <span class="control-label">@L["Target"] @L["Speed"]</span>
+            <WinOldButton OnClick="() => ChangeSpeedAsync(-0.5)">@Delta(-0.5)</WinOldButton>
+            <WinOldButton OnClick="() => ChangeSpeedAsync(-0.1)">@Delta(-0.1)</WinOldButton>
+            <span class="target">@_targetSpeed.ToString("0.0") km/h</span>
+            <WinOldButton OnClick="() => ChangeSpeedAsync(0.1)">@Delta(0.1)</WinOldButton>
+            <WinOldButton OnClick="() => ChangeSpeedAsync(0.5)">@Delta(0.5)</WinOldButton>
+        </div>
 
-    <div class="control">
-        <span class="control-label">@L["Target"] @L["Incline"]</span>
-        <WinOldButton OnClick="() => ChangeInclineAsync(-InclineStep)">@Delta(-InclineStep)</WinOldButton>
-        <span class="target">@_targetIncline.ToString("0.#") %</span>
-        <WinOldButton OnClick="() => ChangeInclineAsync(InclineStep)">@Delta(InclineStep)</WinOldButton>
-    </div>
+        <div class="control">
+            <span class="control-label">@L["Target"] @L["Incline"]</span>
+            <WinOldButton OnClick="() => ChangeInclineAsync(-InclineStep)">@Delta(-InclineStep)</WinOldButton>
+            <span class="target">@_targetIncline.ToString("0.#") %</span>
+            <WinOldButton OnClick="() => ChangeInclineAsync(InclineStep)">@Delta(InclineStep)</WinOldButton>
+        </div>
+    }
 
     <div class="actions">
-        <WinOldButton OnClick="() => RunAsync(Treadmill.StartAsync)">@L["Start"]</WinOldButton>
-        <WinOldButton OnClick="() => RunAsync(() => Treadmill.StopAsync(StopKind.Pause))">@L["Pause"]</WinOldButton>
+        @if (!IsBike)
+        {
+            <WinOldButton OnClick="() => RunAsync(Treadmill.StartAsync)">@L["Start"]</WinOldButton>
+            <WinOldButton OnClick="() => RunAsync(() => Treadmill.StopAsync(StopKind.Pause))">@L["Pause"]</WinOldButton>
+        }
         <WinOldButton Class="stop" OnClick="() => RunAsync(() => Treadmill.StopAsync(StopKind.Stop))">@L["Stop"]</WinOldButton>
     </div>
 
@@ -57,6 +86,9 @@
     private double _targetSpeed;
     private double _targetIncline;
     private string? _message;
+
+    /// <summary>Resistance only: the bike simulates the inclination with it, the user makes the speed.</summary>
+    private bool IsBike => Treadmill.Kind == MachineKind.Bike;
 
     private double InclineStep => Treadmill.InclineRange?.Step is > 0 and var step ? step : 1.0;
 

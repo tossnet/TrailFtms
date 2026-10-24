@@ -12,7 +12,7 @@
         <WinOldLabel>@L["AppTagline"]</WinOldLabel>
     </div>
 
-    <WinOldFrame Label="@L["Treadmill"]">
+    <WinOldFrame Label="@L["Machine"]">
         <div class="wo-col wo-gap-8">
             @switch (_availability)
             {
@@ -51,7 +51,11 @@
                 }
             </div>
 
-            @if (Treadmill.State == TreadmillState.Connected)
+            @if (Treadmill.State == TreadmillState.Connected && Treadmill.Kind == MachineKind.Bike)
+            {
+                <WinOldLabel>@L["BikeRange", DomyosProtocol.MinLevel, DomyosProtocol.MaxLevel]</WinOldLabel>
+            }
+            else if (Treadmill.State == TreadmillState.Connected)
             {
                 @if (Treadmill.SpeedRange is { } speed)
                 {

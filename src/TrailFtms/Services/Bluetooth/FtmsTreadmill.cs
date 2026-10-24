@@ -2,7 +2,7 @@ using Microsoft.JSInterop;
 
 namespace TrailFtms.Services.Bluetooth;
 
-/// <summary>FTMS treadmill over Web Bluetooth (wwwroot/js/ftms.js).</summary>
+/// <summary>FTMS treadmill, or Domyos bike (<see cref="DomyosProtocol"/>), over Web Bluetooth (wwwroot/js/ftms.js).</summary>
 public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
 {
     private const ushort FeatureUuid = 0x2ACC;
@@ -15,11 +15,17 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
     private TaskCompletionSource<ControlPointResult>? _pending;
     private ControlPointOpCode _pendingOpCode;
     private bool _disconnectRequested;
+    private readonly DomyosFrameAssembler _domyosFrames = new();
+    private CancellationTokenSource? _polling;
 
     /// <summary>How long to wait for the Control Point answer before giving up.</summary>
     public TimeSpan ResponseTimeout { get; init; } = TimeSpan.FromSeconds(2);
 
+    /// <summary>How often the bike measurements are requested. Zero: never (tests feed them by hand).</summary>
+    public TimeSpan PollInterval { get; init; } = TimeSpan.FromMilliseconds(300);
+
     public TreadmillState State { get; private set; }
+    public MachineKind Kind { get; private set; }
     public string? DeviceName { get; private set; }
     public MachineFeatures? Features { get; private set; }
     public SupportedRange? SpeedRange { get; private set; }
@@ -51,20 +57,33 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
         var module = await GetModuleAsync();
         _selfRef ??= DotNetObjectReference.Create(this);
         _disconnectRequested = false;
+        StopPolling();
         try
         {
-            var name = await module.InvokeAsync<string?>("connect", _selfRef);
-            if (name is null)
+            var device = await module.InvokeAsync<ConnectedDevice?>("connect", _selfRef);
+            if (device is null)
             {
                 SetState(TreadmillState.Disconnected);
                 return false;
             }
 
-            DeviceName = name;
+            DeviceName = device.Name;
+            Kind = device.Protocol == ConnectedDevice.Domyos ? MachineKind.Bike : MachineKind.Treadmill;
+            LastData = null;
+            if (Kind == MachineKind.Bike)
+            {
+                Features = null;
+                SpeedRange = null;
+                InclineRange = DomyosProtocol.SimulatedInclineRange;
+                _domyosFrames.Reset();
+                SetState(TreadmillState.Connected);
+                await StartBikeAsync();
+                return true;
+            }
+
             Features = FtmsProtocol.ParseMachineFeatures(await module.InvokeAsync<byte[]?>("read", FeatureUuid));
             SpeedRange = FtmsProtocol.ParseSpeedRange(await module.InvokeAsync<byte[]?>("read", SpeedRangeUuid));
             InclineRange = FtmsProtocol.ParseInclinationRange(await module.InvokeAsync<byte[]?>("read", InclineRangeUuid));
-            LastData = null;
             SetState(TreadmillState.Connected);
         }
         catch
@@ -103,6 +122,7 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
         }
 
         _disconnectRequested = true;
+        StopPolling();
         await _module.InvokeVoidAsync("disconnect");
         // Also after a lost connection: the user acknowledged it, back to "not connected".
         // The browser event that follows finds Disconnected and is ignored.
@@ -110,17 +130,28 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
         SetState(TreadmillState.Disconnected);
     }
 
-    public Task<ControlPointResult> RequestControlAsync() => SendAsync(FtmsProtocol.RequestControl());
+    public Task<ControlPointResult> RequestControlAsync() =>
+        Kind == MachineKind.Bike ? NothingToSend() : SendAsync(FtmsProtocol.RequestControl());
 
-    public Task<ControlPointResult> StartAsync() => SendAsync(FtmsProtocol.StartOrResume());
+    public Task<ControlPointResult> StartAsync() =>
+        Kind == MachineKind.Bike ? NothingToSend() : SendAsync(FtmsProtocol.StartOrResume());
 
-    public Task<ControlPointResult> StopAsync(StopKind kind = StopKind.Stop) => SendAsync(FtmsProtocol.StopOrPause(kind));
+    public Task<ControlPointResult> StopAsync(StopKind kind = StopKind.Stop) => Kind switch
+    {
+        MachineKind.Bike when kind == StopKind.Stop => SendAsync(DomyosProtocol.SetResistance(DomyosProtocol.MinLevel)),
+        MachineKind.Bike => NothingToSend(),
+        _ => SendAsync(FtmsProtocol.StopOrPause(kind)),
+    };
 
     public Task<ControlPointResult> SetSpeedAsync(double kmh) =>
-        SendAsync(FtmsProtocol.SetTargetSpeed(ClampSpeed(kmh)));
+        Kind == MachineKind.Bike
+            ? Task.FromResult(ControlPointResult.NotSupported)
+            : SendAsync(FtmsProtocol.SetTargetSpeed(ClampSpeed(kmh)));
 
     public Task<ControlPointResult> SetInclineAsync(double percent) =>
-        SendAsync(FtmsProtocol.SetTargetInclination(ClampIncline(percent)));
+        SendAsync(Kind == MachineKind.Bike
+            ? DomyosProtocol.SetResistance(DomyosProtocol.LevelFor(ClampIncline(percent)))
+            : FtmsProtocol.SetTargetInclination(ClampIncline(percent)));
 
     public double ClampSpeed(double kmh)
     {
@@ -141,12 +172,20 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
     [JSInvokable]
     public void OnTreadmillData(byte[] frame)
     {
-        if (FtmsProtocol.ParseTreadmillData(frame) is not { } update)
+        if (FtmsProtocol.ParseTreadmillData(frame) is { } update)
+            Publish(update);
+    }
+
+    [JSInvokable]
+    public void OnDomyosData(byte[] chunk)
+    {
+        if (_domyosFrames.Push(chunk) is not { } frame || !DomyosProtocol.IsValid(frame))
             return;
 
-        var data = LastData?.UpdatedWith(update) ?? update;
-        LastData = data;
-        DataReceived?.Invoke(data);
+        if (DomyosProtocol.ParseData(frame) is { } update)
+            Publish(update);
+        // One command in flight: the next frame from the console is its answer.
+        _pending?.TrySetResult(ControlPointResult.Success);
     }
 
     [JSInvokable]
@@ -170,9 +209,70 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
         if (State is TreadmillState.Disconnected or TreadmillState.ConnectionLost or TreadmillState.Connecting)
             return;
 
+        StopPolling();
         _pending?.TrySetException(new InvalidOperationException("Treadmill disconnected."));
         SetState(_disconnectRequested ? TreadmillState.Disconnected : TreadmillState.ConnectionLost);
     }
+
+    // ---- Bike ----
+
+    /// <summary>Init sequence, then the measurements are polled for the whole connection.</summary>
+    private async Task StartBikeAsync()
+    {
+        foreach (var command in DomyosProtocol.Init)
+        {
+            try
+            {
+                await SendAsync(command);
+            }
+            catch (TimeoutException)
+            {
+                // Consoles may not answer every init command: keep going, the measurements tell if it works.
+            }
+        }
+
+        if (PollInterval > TimeSpan.Zero)
+        {
+            _polling = new CancellationTokenSource();
+            _ = PollAsync(_polling.Token);
+        }
+    }
+
+    private async Task PollAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(PollInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token) && State == TreadmillState.Connected)
+            {
+                try
+                {
+                    await SendAsync(DomyosProtocol.RequestData());
+                }
+                catch (TimeoutException)
+                {
+                    // Lost answer: the next poll asks again.
+                }
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or InvalidOperationException)
+        {
+            // Disconnected.
+        }
+    }
+
+    private void StopPolling()
+    {
+        _polling?.Cancel();
+        _polling?.Dispose();
+        _polling = null;
+    }
+
+    /// <summary>A bike command with nothing to send, with the same contract as a sent one.</summary>
+    private Task<ControlPointResult> NothingToSend() =>
+        State == TreadmillState.Connected
+            ? Task.FromResult(ControlPointResult.Success)
+            : Task.FromException<ControlPointResult>(new InvalidOperationException("Treadmill not connected."));
 
     // ---- Command queue ----
 
@@ -221,6 +321,13 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
     private async ValueTask<IJSObjectReference> GetModuleAsync() =>
         _module ??= await js.InvokeAsync<IJSObjectReference>("import", "./js/ftms.js");
 
+    private void Publish(TreadmillData update)
+    {
+        var data = LastData?.UpdatedWith(update) ?? update;
+        LastData = data;
+        DataReceived?.Invoke(data);
+    }
+
     private void SetState(TreadmillState state)
     {
         State = state;
@@ -229,6 +336,7 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
 
     public async ValueTask DisposeAsync()
     {
+        StopPolling();
         if (_module is not null)
         {
             try
@@ -243,4 +351,11 @@ public sealed class FtmsTreadmill(IJSRuntime js) : IFtmsTreadmill
         _selfRef?.Dispose();
         _commandLock.Dispose();
     }
+}
+
+/// <summary>The machine ftms.js connected to, and the protocol it speaks.</summary>
+internal sealed record ConnectedDevice(string Name, string Protocol)
+{
+    public const string Ftms = "ftms";
+    public const string Domyos = "domyos";
 }

@@ -237,7 +237,7 @@ public sealed class RideEngine : IAsyncDisposable
     private void WatchAdjustments()
     {
         var data = _treadmill.LastData;
-        if (data?.SpeedKmh is { } speed && _speedWatch.Observe(VideoTime, speed, SpeedStep) is { } speedChange)
+        if (!IsBike && data?.SpeedKmh is { } speed && _speedWatch.Observe(VideoTime, speed, SpeedStep) is { } speedChange)
         {
             var value = Settings.SpeedFactor > 0 ? speedChange.Value / Settings.SpeedFactor : speedChange.Value;
             _adjustments.Add(new(speedChange.T, AdjustedValue.Speed, Math.Round(value, 1)));
@@ -249,11 +249,12 @@ public sealed class RideEngine : IAsyncDisposable
     /// <summary>
     /// Incline of the current segment, or of the next incline change once the treadmill needs
     /// to start moving so that it is reached on time (the motor moves one step every InclineSecondsPerStep).
+    /// A bike resistance changes at once.
     /// </summary>
     private double InclineAhead(IReadOnlyList<ProgramSegment> segments)
     {
         var current = InclineTarget(segments[SegmentIndex].Incline);
-        if (Settings.InclineSecondsPerStep <= 0)
+        if (Settings.InclineSecondsPerStep <= 0 || IsBike)
             return current;
 
         for (var i = SegmentIndex + 1; i < segments.Count; i++)
@@ -270,6 +271,9 @@ public sealed class RideEngine : IAsyncDisposable
     private double InclineStep => _treadmill.InclineRange?.Step is > 0 and var s ? s : 1.0;
 
     private double SpeedStep => _treadmill.SpeedRange?.Step is > 0 and var s ? s : 0.1;
+
+    /// <summary>The user pedals: the program speed is only shown, never sent nor watched.</summary>
+    private bool IsBike => _treadmill.Kind == MachineKind.Bike;
 
     private async Task ApplyPauseAsync()
     {
@@ -324,7 +328,7 @@ public sealed class RideEngine : IAsyncDisposable
     // is not retried in a loop, the next change will try again.
     private Task SetSpeedAsync(double speed)
     {
-        if (speed == _sentSpeed)
+        if (IsBike || speed == _sentSpeed)
             return Task.CompletedTask;
         _sentSpeed = speed;
         _speedWatch.Expect(speed);

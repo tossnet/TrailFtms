@@ -32,9 +32,11 @@ public sealed class RideEngineTests
         public RideEngine Engine { get; private set; } = null!;
         public List<RideWarning> Warnings { get; } = [];
 
-        public static async Task<Rig> StartAsync(RideSettings? settings = null)
+        public static async Task<Rig> StartAsync(RideSettings? settings = null, bool bike = false)
         {
             var rig = new Rig();
+            if (bike)
+                rig.Js.Protocol = "domyos";
             await rig.Js.Treadmill.ConnectAsync();
             await rig.Video.LoadAsync(default, Program.YoutubeId);
             rig.Engine = new RideEngine(rig.Js.Treadmill, rig.Video, new FakeTimeProvider()) { Settings = settings ?? NoLead };
@@ -70,6 +72,18 @@ public sealed class RideEngineTests
             Js.Treadmill.OnTreadmillData(frame);
         }
 
+        /// <summary>Domyos measurement frame with the pedalled speed and the resistance level, in its two notifications.</summary>
+        public void MeasureBike(double speed, int level)
+        {
+            var parameters = new byte[23];
+            parameters.AsSpan().Fill(0xFF);
+            BinaryPrimitives.WriteUInt16BigEndian(parameters.AsSpan(4), (ushort)Math.Round(speed * 10));
+            parameters[12] = (byte)level;
+            var frame = DomyosProtocol.Frame(0xBC, parameters);
+            Js.Treadmill.OnDomyosData(frame[..20]);
+            Js.Treadmill.OnDomyosData(frame[20..]);
+        }
+
         /// <summary>Plays from <paramref name="from"/> to <paramref name="to"/> (one tick per second) with these measures.</summary>
         public async Task RideAsync(double from, double to, double speed, double incline)
         {
@@ -91,6 +105,7 @@ public sealed class RideEngineTests
             0x08 => frame[1] == 0x01 ? "stop" : "pause",
             0x02 => FormattableString.Invariant($"speed {BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(1)) / 100.0}"),
             0x03 => FormattableString.Invariant($"incline {BinaryPrimitives.ReadInt16LittleEndian(frame.AsSpan(1)) / 10.0}"),
+            0xF0 when frame[1] == 0xAD => $"level {frame[10]}",
             _ => Convert.ToHexString(frame),
         };
     }
@@ -466,6 +481,60 @@ public sealed class RideEngineTests
 
         Assert.IsTrue(rig.Engine.IsAdPlaying);
         Assert.IsEmpty(rig.TakeSent());
+    }
+
+    // ---- Bike ----
+
+    [TestMethod]
+    public async Task Bike_follows_the_incline_with_the_resistance_at_once()
+    {
+        var rig = await Rig.StartAsync(new RideSettings(), bike: true); // incline lead of the treadmill motor
+
+        await rig.PlayAtAsync(0);
+        CollectionAssert.AreEqual(new[] { "level 1" }, rig.TakeSent());
+
+        await rig.PlayAtAsync(39);
+        Assert.IsEmpty(rig.TakeSent());
+
+        await rig.PlayAtAsync(40);
+        CollectionAssert.AreEqual(new[] { "level 4" }, rig.TakeSent());
+        Assert.AreEqual(3.0, rig.Engine.TargetSpeed, "program speed still shown");
+    }
+
+    [TestMethod]
+    public async Task Bike_cools_down_the_resistance_only()
+    {
+        var rig = await Rig.StartAsync(bike: true);
+        await rig.PlayAtAsync(45); // 3 %: level 4
+        rig.TakeSent();
+
+        rig.Video.SetState(VideoState.Ended);
+        var steps = rig.TakeSent();
+        for (var i = 0; i < 10 && rig.Engine.Status == RideStatus.CoolingDown; i++)
+        {
+            await rig.TicksAsync(RideEngine.CooldownStepTicks);
+            steps.AddRange(rig.TakeSent());
+        }
+
+        CollectionAssert.AreEqual(new[] { "level 3", "level 2", "level 1", "level 1" }, steps); // the last one is the stop
+        Assert.AreEqual(RideStatus.Finished, rig.Engine.Status);
+    }
+
+    [TestMethod]
+    public async Task Bike_records_resistance_changes_but_not_the_pedalled_speed()
+    {
+        var rig = await Rig.StartAsync(bike: true);
+        rig.MeasureBike(25, 4);
+        for (var t = 40; t <= 45; t++)
+            await rig.PlayAtAsync(t); // 3 % from 40: level 4 reached
+
+        rig.MeasureBike(32, 6);
+        for (var t = 46; t <= 49; t++)
+            await rig.PlayAtAsync(t);
+
+        var adjustment = rig.Engine.Adjustments.Single();
+        Assert.AreEqual(AdjustedValue.Incline, adjustment.Kind);
+        Assert.AreEqual(5.0, adjustment.Value);
     }
 
     // ---- End of video ----
