@@ -18,10 +18,25 @@ public enum TreadmillState
     ConnectionLost,
 }
 
-/// <summary>A treadmill driven through the Bluetooth Fitness Machine Service.</summary>
+public enum MachineKind
+{
+    /// <summary>Bluetooth Fitness Machine Service treadmill.</summary>
+    Treadmill,
+    /// <summary>
+    /// Domyos bike (proprietary protocol): the speed is the user's, the inclination is simulated
+    /// by the resistance (<see cref="DomyosProtocol"/>), start and pause do nothing.
+    /// </summary>
+    Bike,
+}
+
+/// <summary>
+/// A treadmill driven through the Bluetooth Fitness Machine Service, or a Domyos bike behaving like one
+/// (see <see cref="Kind"/>), so that the ride engine and the programs drive both.
+/// </summary>
 public interface IFtmsTreadmill : IAsyncDisposable
 {
     TreadmillState State { get; }
+    MachineKind Kind { get; }
     string? DeviceName { get; }
     MachineFeatures? Features { get; }
     SupportedRange? SpeedRange { get; }
@@ -44,11 +59,12 @@ public interface IFtmsTreadmill : IAsyncDisposable
 
     // Commands are queued (one in flight) and return the machine's answer.
     // They throw TimeoutException if the machine does not answer, InvalidOperationException if not connected.
+    // On a bike, Stop sets the lowest resistance, Start and Pause succeed without sending anything.
     Task<ControlPointResult> RequestControlAsync();
     Task<ControlPointResult> StartAsync();
     Task<ControlPointResult> StopAsync(StopKind kind = StopKind.Stop);
 
-    /// <summary>Sets the target speed, see <see cref="ClampSpeed"/>.</summary>
+    /// <summary>Sets the target speed, see <see cref="ClampSpeed"/>. Not supported by a bike.</summary>
     Task<ControlPointResult> SetSpeedAsync(double kmh);
 
     /// <summary>Sets the target inclination, see <see cref="ClampIncline"/>.</summary>

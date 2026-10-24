@@ -110,14 +110,32 @@
                     <span class="target">@L["Target"] @speed.ToString("0.0")</span>
                 }
             </div>
-            <div class="metric">
-                <span class="label">@L["Incline"]</span>
-                <span class="value">@Number(_data?.InclinePercent, "0.#")<small> %</small></span>
-                @if (_engine.TargetIncline is { } incline)
-                {
-                    <span class="target">@L["Target"] @incline.ToString("0.#")</span>
-                }
-            </div>
+            @if (IsBike)
+            {
+                <div class="metric">
+                    <span class="label">@L["Resistance"]</span>
+                    <span class="value">@(_data?.ResistanceLevel?.ToString() ?? "-")</span>
+                    @if (_engine.TargetIncline is { } incline)
+                    {
+                        <span class="target">@L["Target"] @DomyosProtocol.LevelFor(incline)</span>
+                    }
+                </div>
+                <div class="metric">
+                    <span class="label">@L["Cadence"]</span>
+                    <span class="value">@(_data?.CadenceRpm?.ToString() ?? "-")<small> rpm</small></span>
+                </div>
+            }
+            else
+            {
+                <div class="metric">
+                    <span class="label">@L["Incline"]</span>
+                    <span class="value">@Number(_data?.InclinePercent, "0.#")<small> %</small></span>
+                    @if (_engine.TargetIncline is { } incline)
+                    {
+                        <span class="target">@L["Target"] @incline.ToString("0.#")</span>
+                    }
+                </div>
+            }
             @if (_calories.Profile is not null)
             {
                 <div class="metric calories">
@@ -147,7 +165,14 @@
                     <span class="label">@L["Next"]</span>
                     @if (NextSegment is { } next)
                     {
-                        <span class="value"><span>@Treadmill.ClampSpeed(next.Speed * Factor).ToString("0.0")<small> km/h</small></span> <span>@Treadmill.ClampIncline(next.Incline).ToString("0.#")<small> %</small></span></span>
+                        <span class="value"><span>@Treadmill.ClampSpeed(next.Speed * Factor).ToString("0.0")<small> km/h</small></span> @if (IsBike)
+                            {
+                                <span>@L["Level", DomyosProtocol.LevelFor(Treadmill.ClampIncline(next.Incline))]</span>
+                            }
+                            else
+                            {
+                                <span>@Treadmill.ClampIncline(next.Incline).ToString("0.#")<small> %</small></span>
+                            }</span>
                         <span class="target">@L["NextIn", Formatting.Time(Math.Ceiling(_engine.NextChangeIn ?? 0))]</span>
                     }
                     else
@@ -216,6 +241,12 @@
 
     private double Factor => _engine.Settings.SpeedFactor;
 
+    /// <summary>Resistance and cadence instead of the inclination, see <see cref="MachineKind.Bike"/>.</summary>
+    private bool IsBike => Treadmill.Kind == MachineKind.Bike;
+
+    /// <summary>The estimate uses walking and running equations: on a bike, the console value is shown instead.</summary>
+    private BodyProfile? CalorieProfile => IsBike ? null : Settings.Current.Body;
+
     private double ProfileDuration => _program?.DurationSeconds is > 0 and var d ? d : _duration;
 
     private double? ProfileWindow => ProfileDuration > ScrollingProfileFrom ? ProfileWindowSeconds : null;
@@ -246,7 +277,7 @@
 
         await Settings.LoadAsync();
         _engine.Settings = Settings.Current.Ride;
-        _calories.Profile = Settings.Current.Body;
+        _calories.Profile = CalorieProfile;
 
         if (ProgramId is null)
         {
@@ -404,7 +435,7 @@
     private void OnSettingsChanged()
     {
         _engine.Settings = Settings.Current.Ride;
-        _calories.Profile = Settings.Current.Body;
+        _calories.Profile = CalorieProfile;
         InvokeAsync(StateHasChanged);
     }
 

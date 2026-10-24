@@ -15,6 +15,12 @@ public sealed record TreadmillData
     public TimeSpan? ElapsedTime { get; init; }
     public TimeSpan? RemainingTime { get; init; }
 
+    /// <summary>Bike only.</summary>
+    public int? CadenceRpm { get; init; }
+
+    /// <summary>Bike only, see <see cref="DomyosProtocol"/>.</summary>
+    public int? ResistanceLevel { get; init; }
+
     /// <summary>
     /// Machines may split the measurements over several notifications ("More Data" flag, e.g. the
     /// speed in one, distance and time in the next): keep the last known value of each field.
@@ -29,5 +35,7 @@ public sealed record TreadmillData
         HeartRateBpm = update.HeartRateBpm ?? HeartRateBpm,
         ElapsedTime = update.ElapsedTime ?? ElapsedTime,
         RemainingTime = update.RemainingTime ?? RemainingTime,
+        CadenceRpm = update.CadenceRpm ?? CadenceRpm,
+        ResistanceLevel = update.ResistanceLevel ?? ResistanceLevel,
     };
 }

@@ -370,6 +370,6 @@ public sealed class RideTests
         await cut.InvokeAsync(() => ctx.Ftms.Treadmill.OnTreadmillData([0x80, 0x00, 0xE8, 0x03, 42, 0x00, 0xFF, 0xFF, 0xFF]));
 
         Assert.AreEqual("42 kcal", cut.Find(".metric.calories .value").TextContent);
-        Assert.AreEqual("Valeur du tapis", cut.Find(".metric.calories .target").TextContent);
+        Assert.AreEqual("Valeur de l'appareil", cut.Find(".metric.calories .target").TextContent);
     }
 }
